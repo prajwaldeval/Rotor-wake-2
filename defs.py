@@ -51,44 +51,50 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
 
     for blade_nr in range(number_of_blades):
 
-        angle_rotation = (2 * np.pi) / ((blade_nr + 1) * number_of_blades)
+        angle_rotation = ((2 * np.pi) / number_of_blades) * blade_nr
+        print('rot=', angle_rotation)
         cos_rotation = np.cos(angle_rotation)
         sin_rotation = np.sin(angle_rotation)
 
-        for ri in range(len(r_array)-1):
+        # apply rotation to whole theta_array
+        # theta_array = theta_array - angle_rotation
 
-            geodef = blade_geometry(r_array[ri]/R)  # chord, twist+pitch=phi
+        for ri in range(len(r_array)-1):
+            geodef = blade_geometry(r_array[ri])  # chord, twist+pitch=phi
             angle = geodef[1] * np.pi / 180
 
             # define control points
-            temp1 = {"coordinates": [0, ri, 0],
+            temp1 = {"coordinates": [0, r_array[ri], 0],
                      "chord": geodef[0],
                      "normal": [np.cos(angle), 0, -1 * np.sin(angle)],
-                     "tangential": [-1 * np.sin(angle), 0, -1 * np.cos(angle)]}
+                     "tangential": [-1 * np.sin(angle), 0, -1 * np.cos(angle)],
+                     "blade": blade_nr}
 
             # rotate blade to position
-            temp1["coordinates"] = [0, temp1["coordinates"][1] * cos_rotation - temp1["coordinates"][2] * sin_rotation,
-                                 temp1["coordinates"][1] * sin_rotation + temp1["coordinates"][2] * cos_rotation]
+            temp1["coordinates"] = [0,
+                                    temp1["coordinates"][1] * cos_rotation - temp1["coordinates"][2] * sin_rotation,
+                                    temp1["coordinates"][1] * sin_rotation + temp1["coordinates"][2] * cos_rotation]
 
-            temp1["normal"] = [temp1["normal"][0], temp1["normal"][1] * cos_rotation - temp1["normal"][2] * sin_rotation,
-                            temp1["normal"][1] * sin_rotation + temp1["normal"][2] * cos_rotation]
+            temp1["normal"] = [temp1["normal"][0],
+                               temp1["normal"][1] * cos_rotation - temp1["normal"][2] * sin_rotation,
+                               temp1["normal"][1] * sin_rotation + temp1["normal"][2] * cos_rotation]
 
-            temp1["tangential"] = [temp1["tangential"][0], temp1["tangential"][1] * cos_rotation -
-                                temp1["tangential"][2] * sin_rotation,
-                                temp1["tangential"][1] * sin_rotation + temp1["tangential"][2] * cos_rotation]
+            temp1["tangential"] = [temp1["tangential"][0],
+                                   temp1["tangential"][1] * cos_rotation - temp1["tangential"][2] * sin_rotation,
+                                   temp1["tangential"][1] * sin_rotation + temp1["tangential"][2] * cos_rotation]
 
             controlpoints.append(temp1)
 
-            # define bound vortex filament
+            # define bound vortex filament & rotate filament to position
             temp1 = {"x1": 0,
-                     "y1": r_array[ri],
-                     "z1": 0,
+                     "y1": r_array[ri] * cos_rotation,
+                     "z1": r_array[ri] * sin_rotation,
                      "x2": 0,
-                     "y2": r_array[ri + 1],
-                     "z2": 0,
-                     "Gamma": 0}
+                     "y2": r_array[ri + 1] * cos_rotation,
+                     "z2": r_array[ri + 1] * sin_rotation,
+                     "Gamma": 0,
+                     "blade": blade_nr}
 
-            # rotate filament to position
             filaments.append(temp1)
 
             # create trailing filaments, at x1 (1st point) of bound filament
@@ -101,7 +107,8 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
                      "x2": 0,
                      "y2": r_array[ri],
                      "z2": 0,
-                     "Gamma": 0}
+                     "Gamma": 0,
+                     "blade": blade_nr}
 
             filaments.append(temp1)
 
@@ -110,9 +117,10 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
                 yt = filaments[len(filaments) - 1]["y1"]
                 zt = filaments[len(filaments) - 1]["z1"]
 
-                dy = (np.cos(-theta_array[j + 1]) - np.cos(-theta_array[j])) * r_array[ri]
-                dz = (np.sin(-theta_array[j + 1]) - np.sin(-theta_array[j])) * r_array[ri]
                 dx = (theta_array[j + 1] - theta_array[j]) / tip_speed_ratio * D / 2
+                dy = (np.cos(theta_array[j + 1]) - np.cos(theta_array[j])) * r_array[ri]
+                dz = (np.sin(-theta_array[j + 1]) - np.sin(-theta_array[j])) * r_array[ri]
+
 
                 temp1 = {"x1": xt + dx,
                          "y1": yt + dy,
@@ -120,7 +128,8 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
                          "x2": xt,
                          "y2": yt,
                          "z2": zt,
-                         "Gamma": 0}
+                         "Gamma": 0,
+                         "blade": blade_nr}
 
                 filaments.append(temp1)
 
@@ -134,7 +143,8 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
                      "x2": 0,
                      "y2": r_array[ri + 1],
                      "z2": 0,
-                     "Gamma": 0}
+                     "Gamma": 0,
+                     "blade": blade_nr}
 
             filaments.append(temp1)
             for j in range(len(theta_array) - 1):
@@ -142,9 +152,10 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
                 yt = filaments[len(filaments) - 1]["y2"]
                 zt = filaments[len(filaments) - 1]["z2"]
 
-                dy = (np.cos(-theta_array[j + 1]) - np.cos(-theta_array[j])) * r_array[ri + 1]
-                dz = (np.sin(-theta_array[j + 1]) - np.sin(-theta_array[j])) * r_array[ri + 1]
                 dx = (theta_array[j + 1] - theta_array[j]) / tip_speed_ratio * D / 2
+                dy = (np.cos(theta_array[j + 1]) - np.cos(theta_array[j])) * r_array[ri + 1]
+                dz = (np.sin(-theta_array[j + 1]) - np.sin(-theta_array[j])) * r_array[ri + 1]
+
 
                 temp1 = {"x1": xt,
                          "y1": yt,
@@ -152,25 +163,16 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
                          "x2": xt + dx,
                          "y2": yt + dy,
                          "z2": zt + dz,
-                         "Gamma": 0}
+                         "Gamma": 0,
+                         "blade": blade_nr}
 
                 filaments.append(temp1)
-
-            # define the trailing vortex filaments
-            # for j in range(1, nt):
-            #     t_wake[j] = t_wake[j - 1] + wakelength * D / U_wake[j] / nt
-
-            # n = len(r)  # number of horseshoe vortices per blade
-            # rw = np.zeros((nt, n))  # each row is one timestep, each column spanwise station
-            # thw = np.zeros((nt, n))
-            # print(rw)
-            # # for i in range(n):
 
     return controlpoints, filaments
 
 
 if __name__ == '__main__':
-    number_of_blades = 2
+    number_of_blades = 3
     R = 50  # m
     r_hub = 0.2 * R
     U0 = 10
@@ -180,7 +182,7 @@ if __name__ == '__main__':
     r, dr = geometry_constant(r_hub, R, 20)
     # r,dr = geometry_cosine(r_hub,R,30)
 
-    wakelength = 1  # how many dimaters long the wake shall be prescribed for
+    wakelength = 0.05  # how many diameters long the wake shall be prescribed for
     nt = 50
     tip_speed_ratio = 8
 
@@ -190,9 +192,12 @@ if __name__ == '__main__':
     ax = plt.axes(projection="3d")
 
     for i in range(len(fils)):
-
         x, y, z = [fils[i]["x1"], fils[i]["x2"]], [fils[i]["y1"], fils[i]["y2"]], [fils[i]["z1"], fils[i]["z2"]]
-        # ax.scatter(x, y, z, c='red', s=100)
         ax.plot(x, y, z, color='black')
+
+    for i in range(len(cps)):
+
+        x, y, z = cps[i]["coordinates"]
+        ax.scatter(x, y, z, c='red', s=100)
 
     plt.show()
