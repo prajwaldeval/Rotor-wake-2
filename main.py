@@ -10,7 +10,7 @@ U0 = 10
 a = 0.25
 
 # Constant or cosine element spacing on the blade
-r, dr = geometry_constant(r_hub, R, 2)
+r, dr = geometry_constant(r_hub, R, 20)
 # r,dr = geometry_cosine(r_hub,R,30)
 
 w =

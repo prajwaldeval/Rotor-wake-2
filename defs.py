@@ -45,17 +45,17 @@ def wake_system_generation(r_array, dr, U0, w, a, wakelength, nt, number_of_blad
 
     for blade_nr in range(number_of_blades):
 
-        angle_rotation = (2 * np.pi) / (blade_nr * number_of_blades)
+        angle_rotation = (2 * np.pi) / ((blade_nr + 1) * number_of_blades)
         cos_rotation = np.cos(angle_rotation)
         sin_rotation = np.sin(angle_rotation)
 
         for r in r_array:
 
-            geodef = blade_geometry(r)
-            angle = geodef[1] * np.pi/180
+            geodef = blade_geometry(r_array[ri]/R)  # chord, twist+pitch=phi
+            angle = geodef[1] * np.pi / 180
 
             # define control points
-            temp1 = {"coordinates": [0, r, 0],
+            temp1 = {"coordinates": [0, ri, 0],
                      "chord": geodef[0],
                      "normal": [np.cos(angle), 0, -1 * np.sin(angle)],
                      "tangential": [-1 * np.sin(angle), 0, -1 * np.cos(angle)]}
@@ -64,8 +64,8 @@ def wake_system_generation(r_array, dr, U0, w, a, wakelength, nt, number_of_blad
             temp1.coordinates = [0, temp1.coordinates[1] * cos_rotation - temp1.coordinates[2] * sin_rotation,
                                  temp1.coordinates[1] * sin_rotation + temp1.coordinates[2] * cos_rotation]
 
-            temp1.normal = [temp1.normal[0], temp1.normal[1] * cos_rotation - temp1.normal[2] * sin_rotation,
-                            temp1.normal[1] * sin_rotation + temp1.normal[2] * cos_rotation]
+            temp1["normal"] = [temp1["normal"][0], temp1["normal"][1] * cos_rotation - temp1["normal"][2] * sin_rotation,
+                            temp1["normal"][1] * sin_rotation + temp1["normal"][2] * cos_rotation]
 
             temp1.tangential = [temp1.tangential[0], temp1.tangential[1] * cos_rotation - temp1.tangential[2] * sin_rotation,
                                 temp1.tangential[1] * sin_rotation + temp1.tangential[2] * cos_rotation]
@@ -92,7 +92,7 @@ def wake_system_generation(r_array, dr, U0, w, a, wakelength, nt, number_of_blad
                      "y1": r_array[r],
                      "z1": -1 * geodef[0] * np.cos(angle),
                      "x2": 0,
-                     "y2": r_array[r],
+                     "y2": r_array[ri],
                      "z2": 0,
                      "Gamma": 0}
 
@@ -102,10 +102,10 @@ def wake_system_generation(r_array, dr, U0, w, a, wakelength, nt, number_of_blad
             for j in range(1, nt):
                 t_wake[j] = t_wake[j - 1] + wakelength * D / U_wake[j] / nt
 
-            n = len(r)  # number of horseshoe vortices per blade
-            rw = np.zeros((nt, n))  # each row is one timestep, each column spanwise station
-            thw = np.zeros((nt, n))
-            print(rw)
-            # for i in range(n):
+            # n = len(r)  # number of horseshoe vortices per blade
+            # rw = np.zeros((nt, n))  # each row is one timestep, each column spanwise station
+            # thw = np.zeros((nt, n))
+            # print(rw)
+            # # for i in range(n):
 
     return 0
