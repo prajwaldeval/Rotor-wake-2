@@ -35,7 +35,14 @@ def blade_geometry(radius):
 def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip_speed_ratio):
     controlpoints = []
     filaments = []
-    bound_filaments = []
+    bound_fils_dict = {"x1": [],
+                       "y1": [],
+                       "z1": [],
+                       "x2": [],
+                       "y2": [],
+                       "z2": [],
+                       "Gamma": [],
+                       "blade": []}
 
     Ur = U0 * (1 - a)  # axial velocity just after rotor
     UD = U0 * (1 - 2 * a)  # axial velocity 'infinity' downwind of rotor
@@ -59,7 +66,7 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
 
         # apply rotation to whole theta_array
 
-        for ri in range(len(r_array)-1):
+        for ri in range(len(r_array) - 1):
             geodef = blade_geometry(r_array[ri])  # chord, twist+pitch=phi
             angle = geodef[1] * np.pi / 180
 
@@ -86,16 +93,14 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
             controlpoints.append(temp1)
 
             # define bound vortex filament & rotate filament to position
-            temp1 = {"x1": 0,
-                     "y1": r_array[ri] * cos_rotation,
-                     "z1": r_array[ri] * sin_rotation,
-                     "x2": 0,
-                     "y2": r_array[ri + 1] * cos_rotation,
-                     "z2": r_array[ri + 1] * sin_rotation,
-                     "Gamma": 0,
-                     "blade": blade_nr}
-
-            bound_filaments.append(temp1)
+            bound_fils_dict["x1"].append(0)
+            bound_fils_dict["y1"].append(r_array[ri] * cos_rotation)
+            bound_fils_dict["z1"].append(r_array[ri] * sin_rotation)
+            bound_fils_dict["x2"].append(0)
+            bound_fils_dict["y2"].append(r_array[ri + 1] * cos_rotation)
+            bound_fils_dict["z2"].append(r_array[ri + 1] * sin_rotation)
+            bound_fils_dict["Gamma"].append(0)
+            bound_fils_dict["blade"].append(blade_nr)
 
             # create trailing filaments, at x1 (1st point) of bound filament
             geodef = blade_geometry(r_array[ri] / R)
@@ -110,37 +115,36 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
             #          "Gamma": 0,
             #          "blade": blade_nr}
 
-            temp1 = {"x1": bound_filaments["blade" == blade_nr]["x1"],
-                     "y1": bound_filaments["blade" == blade_nr]["y1"],
-                     "z1": bound_filaments["blade" == blade_nr]["z1"],
-                     "x2": 0,
-                     "y2": r_array[ri],
-                     "z2": 0,
-                     "Gamma": 0,
-                     "blade": blade_nr}
+            # temp1 = {"x1": bound_fils_dict["blade" == blade_nr]["x1"],
+            #          "y1": bound_fils_dict["blade" == blade_nr]["y1"],
+            #          "z1": bound_fils_dict["blade" == blade_nr]["z1"],
+            #          "x2": 0,
+            #          "y2": r_array[ri],
+            #          "z2": 0,
+            #          "Gamma": 0,
+            #          "blade": blade_nr}
+            #
+            # filaments.append(temp1)
 
-            filaments.append(temp1)
-
-            for j in range(len(theta_array) - 1):
-                xt = filaments[len(filaments) - 1]["x1"]
-                yt = filaments[len(filaments) - 1]["y1"]
-                zt = filaments[len(filaments) - 1]["z1"]
-
-                dx = (theta_array[j + 1] - theta_array[j]) / tip_speed_ratio * D / 2
-                dy = (np.cos(theta_array[j + 1]) - np.cos(theta_array[j])) * r_array[ri]
-                dz = (np.sin(-theta_array[j + 1]) - np.sin(-theta_array[j])) * r_array[ri]
-
-
-                temp1 = {"x1": xt + dx,
-                         "y1": yt + dy,
-                         "z1": zt + dz,
-                         "x2": xt,
-                         "y2": yt,
-                         "z2": zt,
-                         "Gamma": 0,
-                         "blade": blade_nr}
-
-                filaments.append(temp1)
+            # for j in range(len(theta_array) - 1):
+                # xt = filaments[len(filaments) - 1]["x1"]
+                # yt = filaments[len(filaments) - 1]["y1"]
+                # zt = filaments[len(filaments) - 1]["z1"]
+                #
+                # dx = (theta_array[j + 1] - theta_array[j]) / tip_speed_ratio * D / 2
+                # dy = (np.cos(theta_array[j + 1]) - np.cos(theta_array[j])) * r_array[ri]
+                # dz = (np.sin(-theta_array[j + 1]) - np.sin(-theta_array[j])) * r_array[ri]
+                #
+                # temp1 = {"x1": xt + dx,
+                #          "y1": yt + dy,
+                #          "z1": zt + dz,
+                #          "x2": xt,
+                #          "y2": yt,
+                #          "z2": zt,
+                #          "Gamma": 0,
+                #          "blade": blade_nr}
+                #
+                # filaments.append(temp1)
 
             # # create trailing filaments, at x2 (2nd point) of bound filament
             # geodef = blade_geometry(r_array[ri + 1] / R)
@@ -155,9 +159,9 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
             # #          "Gamma": 0,
             # #          "blade": blade_nr}
             #
-            # temp1 = {"x1": bound_filaments["blade" == blade_nr]["x2"],
-            #          "y1": bound_filaments["blade" == blade_nr]["y2"],
-            #          "z1": bound_filaments["blade" == blade_nr]["z1"],
+            # temp1 = {"x1": bound_fils_dict["blade" == blade_nr]["x2"],
+            #          "y1": bound_fils_dict["blade" == blade_nr]["y2"],
+            #          "z1": bound_fils_dict["blade" == blade_nr]["z1"],
             #          "x2": 0,
             #          "y2": r_array[ri + 1],
             #          "z2": 0,
@@ -186,7 +190,7 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
             #
             #     filaments.append(temp1)
 
-    return controlpoints, bound_filaments, filaments
+    return controlpoints, bound_fils_dict, filaments
 
 
 if __name__ == '__main__':
@@ -204,15 +208,15 @@ if __name__ == '__main__':
     nt = 50
     tip_speed_ratio = 8
 
-    cps, bound_filaments, fils = wake_system_generation(r, dr, U0, a, wakelength, number_of_blades, tip_speed_ratio)
+    cps, bound_fils_dict, fils = wake_system_generation(r, dr, U0, a, wakelength, number_of_blades, tip_speed_ratio)
 
     fig = plt.figure()
     ax = plt.axes(projection="3d")
 
-    for i in range(len(bound_filaments)):
-        x, y, z = [bound_filaments[i]["x1"], bound_filaments[i]["x2"]], \
-                  [bound_filaments[i]["y1"], bound_filaments[i]["y2"]], \
-                  [bound_filaments[i]["z1"], bound_filaments[i]["z2"]]
+    for i in range(len(bound_fils_dict["x1"])):
+        x, y, z = [bound_fils_dict["x1"][i], bound_fils_dict["x2"][i]], \
+                  [bound_fils_dict["y1"][i], bound_fils_dict["y2"][i]], \
+                  [bound_fils_dict["z1"][i], bound_fils_dict["z2"][i]]
         ax.plot(x, y, z, color='black')
 
     for i in range(len(fils)):
@@ -220,7 +224,6 @@ if __name__ == '__main__':
         ax.plot(x, y, z, color='black')
 
     for i in range(len(cps)):
-
         x, y, z = cps[i]["coordinates"]
         ax.scatter(x, y, z, c='red', s=100)
 
