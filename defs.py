@@ -35,6 +35,7 @@ def blade_geometry(radius):
 def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip_speed_ratio):
     controlpoints = []
     filaments = []
+    bound_filaments = []
 
     Ur = U0 * (1 - a)  # axial velocity just after rotor
     UD = U0 * (1 - 2 * a)  # axial velocity 'infinity' downwind of rotor
@@ -57,7 +58,6 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
         sin_rotation = np.sin(angle_rotation)
 
         # apply rotation to whole theta_array
-        # theta_array = theta_array - angle_rotation
 
         for ri in range(len(r_array)-1):
             geodef = blade_geometry(r_array[ri])  # chord, twist+pitch=phi
@@ -95,15 +95,24 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
                      "Gamma": 0,
                      "blade": blade_nr}
 
-            filaments.append(temp1)
+            bound_filaments.append(temp1)
 
             # create trailing filaments, at x1 (1st point) of bound filament
             geodef = blade_geometry(r_array[ri] / R)
             angle = geodef[1] * np.pi / 180
 
-            temp1 = {"x1": geodef[0] * np.sin(-1 * angle),
-                     "y1": r_array[ri],
-                     "z1": -1 * geodef[0] * np.cos(angle),
+            # temp1 = {"x1": geodef[0] * np.sin(-1 * angle),
+            #          "y1": r_array[ri],
+            #          "z1": 0,
+            #          "x2": 0,
+            #          "y2": r_array[ri],
+            #          "z2": 0,
+            #          "Gamma": 0,
+            #          "blade": blade_nr}
+
+            temp1 = {"x1": bound_filaments["blade" == blade_nr]["x1"],
+                     "y1": bound_filaments["blade" == blade_nr]["y1"],
+                     "z1": bound_filaments["blade" == blade_nr]["z1"],
                      "x2": 0,
                      "y2": r_array[ri],
                      "z2": 0,
@@ -137,9 +146,18 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
             geodef = blade_geometry(r_array[ri + 1] / R)
             angle = geodef[1] * np.pi / 180
 
-            temp1 = {"x1": geodef[0] * np.sin(-1 * angle),
-                     "y1": r_array[ri + 1],
-                     "z1": -1 * geodef[0] * np.cos(angle),
+            # temp1 = {"x1": geodef[0] * np.sin(-1 * angle),
+            #          "y1": r_array[ri + 1],
+            #          "z1": -1 * geodef[0] * np.cos(angle),
+            #          "x2": 0,
+            #          "y2": r_array[ri + 1],
+            #          "z2": 0,
+            #          "Gamma": 0,
+            #          "blade": blade_nr}
+
+            temp1 = {"x1": bound_filaments["blade" == blade_nr]["x2"],
+                     "y1": bound_filaments["blade" == blade_nr]["y2"],
+                     "z1": bound_filaments["blade" == blade_nr]["z1"],
                      "x2": 0,
                      "y2": r_array[ri + 1],
                      "z2": 0,
