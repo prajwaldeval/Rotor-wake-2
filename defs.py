@@ -94,17 +94,19 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
 
             # define bound vortex filament & rotate filament to position
             bound_fils_dict["x1"].append(0)
-            bound_fils_dict["y1"].append(r_array[ri] * cos_rotation)
-            bound_fils_dict["z1"].append(r_array[ri] * sin_rotation)
+            bound_fils_dict["y1"].append((r_array[ri]-0.5*dr[ri]) * cos_rotation)
+            bound_fils_dict["z1"].append((r_array[ri]-0.5*dr[ri]) * sin_rotation)
             bound_fils_dict["x2"].append(0)
-            bound_fils_dict["y2"].append(r_array[ri + 1] * cos_rotation)
-            bound_fils_dict["z2"].append(r_array[ri + 1] * sin_rotation)
+            bound_fils_dict["y2"].append((r_array[ri + 1]-0.5*dr[ri+1]) * cos_rotation)
+            bound_fils_dict["z2"].append((r_array[ri + 1]-0.5*dr[ri+1]) * sin_rotation)
             bound_fils_dict["Gamma"].append(0)
             bound_fils_dict["blade"].append(blade_nr)
 
-            # create trailing filaments, at x1 (1st point) of bound filament
-            geodef = blade_geometry(r_array[ri] / R)
-            angle = geodef[1] * np.pi / 180
+
+
+            # # create trailing filaments, at x1 (1st point) of bound filament
+            # geodef = blade_geometry(r_array[ri] / R)
+            # angle = geodef[1] * np.pi / 180
 
             # temp1 = {"x1": geodef[0] * np.sin(-1 * angle),
             #          "y1": r_array[ri],
