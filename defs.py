@@ -197,7 +197,7 @@ if __name__ == '__main__':
     a = 0.25
 
     # Constant or cosine element spacing on the blade
-    r, dr = geometry_constant(r_hub, R, 20)
+    r, dr = geometry_constant(r_hub, R, 5)
     # r,dr = geometry_cosine(r_hub,R,30)
 
     wakelength = 0.05  # how many diameters long the wake shall be prescribed for
