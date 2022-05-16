@@ -1,0 +1,27 @@
+Index: defs.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>import matplotlib.pyplot as plt\r\nimport numpy as np\r\n\r\ndef geometry_cosine(r_hub,R,n):\r\n    r = np.linspace(0,np.pi,n+1)\r\n    r = (1-np.cos(r))/2\r\n    blen = R-r_hub\r\n    r = r_hub + blen*r\r\n    dr = r[1:]-r[:-1]\r\n    r = (r[1:]+r[:-1])/2\r\n    return r, dr\r\n\r\ndef geometry_constant(r_hub,R,n):\r\n    r = np.linspace(r_hub, R, n+1)\r\n    dr = r[1:] - r[:-1]\r\n    r = (r[1:] + r[:-1]) / 2\r\n    return  r,dr\r\n\r\ndef wake_gen(r,dr,U0,w,a,wakelength,nt):\r\n    Ur = U0*(1-a) #axial velocity just after rotor\r\n    UD = U0*(1-2*a) #axial velocity 'infinity' downwind of rotor\r\n    Uw = np.linspace(Ur,UD,nt) #axial velocity at every discretised location in the wake\r\n    D = (r[-1]+0.5*dr[-1])*2 #rotor diameter\r\n    zw = np.linspace(0,wakelength*D,nt) #z(axial) coordinate of wake discretised points\r\n    tw = np.zeros(nt)\r\n    for i in range(1,nt):\r\n        tw[i] = tw[i-1] + wakelength*D/Uw[i]/nt\r\n\r\n    n = len(r) #number of horseshoe vortices per blade\r\n    rw = np.zeros((nt,n)) #each row is one timestep, each column spanwise station\r\n    thw = np.zeros((nt,n))\r\n    print(rw)\r\n    # for i in range(n):\r\n\r\n    return 0\r\n\r\nif __name__ == '__main__':\r\n    R = 50  # m\r\n    r_hub = 0.2 * R\r\n    U0 = 10\r\n    a = 0.25\r\n    r,dr = geometry_constant(r_hub,R,2)\r\n    # r,dr = geometry_cosine(r_hub,R,30)\r\n\r\n    wake = wake_gen(r,dr,U0,a,4,50,10)
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/defs.py b/defs.py
+--- a/defs.py	(revision c7ced27b728376c8254513bbabdcf0a4f1e7fb65)
++++ b/defs.py	(date 1652371384743)
+@@ -27,10 +27,12 @@
+         tw[i] = tw[i-1] + wakelength*D/Uw[i]/nt
+ 
+     n = len(r) #number of horseshoe vortices per blade
+-    rw = np.zeros((nt,n)) #each row is one timestep, each column spanwise station
+-    thw = np.zeros((nt,n))
+-    print(rw)
+-    # for i in range(n):
++    rw = np.zeros((2*nt,n)) #each row is one timestep, each column spanwise station
++    thw = np.zeros((2*nt,n))
++    rw[0,:] = r
++    thw
++    for i in range(nt):
++
+ 
+     return 0
+ 
