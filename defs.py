@@ -72,7 +72,9 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
                  "x2": 0,
                  "y2": (r_array[ri + 1] - 0.5 * dr[ri + 1]),
                  "z2": 0,
-                 "Gamma": 0}
+                 "Gamma": 0,
+                 "Blade": 0,
+                 "Horse": ri}
 
         filaments.append(temp1)
 
@@ -96,7 +98,9 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
                  "x2": 0,
                  "y2": (r_array[ri] - 0.5 * dr[ri]),
                  "z2": 0,
-                 "Gamma": 0}
+                 "Gamma": 0,
+                 "Blade": 0,
+                 "Horse": ri}
 
         filaments.append(temp1)
 
@@ -115,7 +119,9 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
                      "x2": xt,
                      "y2": yt,
                      "z2": zt,
-                     "Gamma": 0}
+                     "Gamma": 0,
+                     "Blade": 0,
+                     "Horse": ri}
 
             filaments.append(temp1)
 
@@ -139,7 +145,10 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
                  "x2": geodef[0] * np.sin(-angle),
                  "y2": (r_array[ri + 1] - 0.5 * dr[ri + 1]),
                  "z2": -1 * geodef[0] * np.cos(angle),
-                 "Gamma": 0}
+                 "Gamma": 0,
+                 "Blade": 0,
+                 "Horse": ri
+                 }
 
         filaments.append(temp2)
 
@@ -158,7 +167,10 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
                      "x2": xt,
                      "y2": yt,
                      "z2": zt,
-                     "Gamma": 0}
+                     "Gamma": 0,
+                     "Blade": 0,
+                     "Horse": ri
+                     }
 
             filaments.append(temp1)
 
@@ -292,7 +304,9 @@ if __name__ == '__main__':
                          "x2": fils[i]["x2"],
                          "y2": fils[i]["y2"] * np.cos(theta) - fils[i]["z2"] * np.sin(theta),
                          "z2": fils[i]["y2"] * np.sin(theta) + fils[i]["z2"] * np.cos(theta),
-                         "Gamma": 0
+                         "Gamma": 0,
+                         "Blade": blade_nr,
+                         "Horse": fils[i]["Horse"]
                          }
 
             fils_new_blades.append(temp_dict)
