@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-# from mpl_toolkits.mplot3d import Axes3Dimport
+from mpl_toolkits import mplot3d
 import numpy as np
 
 
@@ -192,10 +192,10 @@ def biot_savart_function(fil_x1, fil_y1, fil_z1,
     return u, v, w
 
 
-def unit_strength_induction_matrix():
+def unit_strength_induction_matrix(cps, fils):
     """""
      set up unit strength induction matrix
-     & initalize and calculate matrices for velocity induced by horseshoe vortex rings       
+     & initalize and calculate matrices for velocity induced by horseshoe vortex rings
     """""
 
     # setting up unit induction matrix with the biot-savart function
@@ -204,8 +204,8 @@ def unit_strength_induction_matrix():
     unitV_ind = []
     unitW_ind = []
 
-    for ii in range(len(controlpoints)):
-        for nn in range(len(controlpoints)):
+    for ii in range(len(cps)):
+        for nn in range(len(cps)):
             for jj = 1:2 * N_trail:
                 for nb in range(nr_of_blades)
 
@@ -316,3 +316,8 @@ if __name__ == '__main__':
         ax.scatter(x, y, z, c='red', s=100)
 
     plt.show()
+
+    cps_all = cps + cps_new_blades
+    fils_all = fils + fils_new_blades
+
+    unit_ind_matrix = unit_induction_matrix_function(cps_all, fils_all)
