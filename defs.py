@@ -204,7 +204,7 @@ def biot_savart_function(fil_x1, fil_y1, fil_z1,
     return u, v, w
 
 
-def unit_strength_induction_matrix(cps, fils):
+def unit_strength_induction_matrix(cps, fils, n, number_of_blades):
     """""
      set up unit strength induction matrix
      & initalize and calculate matrices for velocity induced by horseshoe vortex rings
@@ -212,14 +212,18 @@ def unit_strength_induction_matrix(cps, fils):
 
     # setting up unit induction matrix with the biot-savart function
 
-    unitU_ind = []
-    unitV_ind = []
-    unitW_ind = []
+    unitU_ind = np.zeros((len(cps),n*number_of_blades))
+    unitV_ind = np.zeros((len(cps),n*number_of_blades))
+    unitW_ind = np.zeros((len(cps),n*number_of_blades))
 
-    for ii in range(len(cps)):
-        for nn in range(len(cps)):
-            for jj = 1:2 * N_trail:
-                for nb in range(nr_of_blades)
+    for i_cp in range(len(cps)):
+        cp_x, cp_y, cp_z = cps[i]["Coordinates"]
+        for i_blade in range(number_of_blades):
+            fils_blade = []
+            for i in range(len(fils)):
+
+            for i_horse in range(n):
+
 
                     fil_x1 =
                     fil_y1 =
@@ -227,10 +231,7 @@ def unit_strength_induction_matrix(cps, fils):
                     fil_x2 =
                     fil_y2 =
                     fil_z2 =
-                    cp_x =
-                    cp_y =
-                    cp_z =
-                    gamma = 1
+
                     uu, vv, ww = biot_savart_function(fil_x1, fil_y1, fil_z1,
                                                         fil_x2, fil_y2, fil_z2,
                                                         cp_x, cp_y, cp_z,
