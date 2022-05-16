@@ -44,7 +44,7 @@ def unit_strength_induction_matrix():
     for ii in range(len(controlpoints)):
         for nn in range(len(controlpoints)):
             for jj = 1:2 * N_trail:
-                for nb in range(nr_of_blades):
+                for nb in range(nr_of_blades)
 
                     fil_x1 =
                     fil_y1 =
