@@ -203,44 +203,44 @@ def biot_savart_function(fil_x1, fil_y1, fil_z1,
 
     return u, v, w
 
-
-def unit_strength_induction_matrix(cps, fils):
-    """""
-     set up unit strength induction matrix
-     & initalize and calculate matrices for velocity induced by horseshoe vortex rings
-    """""
-
-    # setting up unit induction matrix with the biot-savart function
-
-    unitU_ind = []
-    unitV_ind = []
-    unitW_ind = []
-
-    for ii in range(len(cps)):
-        for nn in range(len(cps)):
-            for jj = 1:2 * N_trail:
-                for nb in range(nr_of_blades)
-
-                    fil_x1 =
-                    fil_y1 =
-                    fil_z1 =
-                    fil_x2 =
-                    fil_y2 =
-                    fil_z2 =
-                    cp_x =
-                    cp_y =
-                    cp_z =
-                    gamma = 1
-                    uu, vv, ww = biot_savart_function(fil_x1, fil_y1, fil_z1,
-                                                        fil_x2, fil_y2, fil_z2,
-                                                        cp_x, cp_y, cp_z,
-                                                        gamma)
-
-    unitU_ind(ii, nn) = unitU_ind(ii, nn) + uu
-    unitV_ind(ii, nn) = unitV_ind(ii, nn) + vv
-    unitW_ind(ii, nn) = unitW_ind(ii, nn) + ww
-
-    return [unitU_ind, unitV_ind, unitW_ind]
+#
+# def unit_strength_induction_matrix(cps, fils):
+#     """""
+#      set up unit strength induction matrix
+#      & initalize and calculate matrices for velocity induced by horseshoe vortex rings
+#     """""
+#
+#     # setting up unit induction matrix with the biot-savart function
+#
+#     unitU_ind = []
+#     unitV_ind = []
+#     unitW_ind = []
+#
+#     for ii in range(len(cps)):
+#         for nn in range(len(cps)):
+#             for jj = 1:2 * N_trail:
+#                 for nb in range(nr_of_blades)
+#
+#                     fil_x1 =
+#                     fil_y1 =
+#                     fil_z1 =
+#                     fil_x2 =
+#                     fil_y2 =
+#                     fil_z2 =
+#                     cp_x =
+#                     cp_y =
+#                     cp_z =
+#                     gamma = 1
+#                     uu, vv, ww = biot_savart_function(fil_x1, fil_y1, fil_z1,
+#                                                         fil_x2, fil_y2, fil_z2,
+#                                                         cp_x, cp_y, cp_z,
+#                                                         gamma)
+#
+#     unitU_ind(ii, nn) = unitU_ind(ii, nn) + uu
+#     unitV_ind(ii, nn) = unitV_ind(ii, nn) + vv
+#     unitW_ind(ii, nn) = unitW_ind(ii, nn) + ww
+#
+#     return [unitU_ind, unitV_ind, unitW_ind]
 
 if __name__ == '__main__':
     number_of_blades = 3
@@ -334,4 +334,25 @@ if __name__ == '__main__':
     cps_all = cps + cps_new_blades
     fils_all = fils + fils_new_blades
 
-    unit_ind_matrix = unit_induction_matrix_function(cps_all, fils_all)
+    # unit_ind_matrix = unit_induction_matrix_function(cps_all, fils_all)
+
+    fils_dict = {"x1": [],
+                "y1": [],
+                "z1": [],
+                "x2": [],
+                "y2": [],
+                "z2": [],
+                "Gamma": [],
+                "Blade": [],
+                "Horse": []}
+
+    for i in range(len(fils_all)):
+        fils_dict["x1"].append(fils_all[i]["x1"])
+        fils_dict["y1"].append(fils_all[i]["y1"])
+        fils_dict["z1"].append(fils_all[i]["z1"])
+        fils_dict["x2"].append(fils_all[i]["x2"])
+        fils_dict["y2"].append(fils_all[i]["y2"])
+        fils_dict["z2"].append(fils_all[i]["z2"])
+        fils_dict["Gamma"].append(fils_all[i]["Gamma"])
+        fils_dict["Blade"].append(fils_all[i]["Blade"])
+        fils_dict["Horse"].append(fils_all[i]["Horse"])
