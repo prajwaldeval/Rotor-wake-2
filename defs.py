@@ -251,7 +251,6 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
 
     return cps_all, fils_dict
 
-'''
 def biot_savart_function(fil_x1, fil_y1, fil_z1,
                          fil_x2, fil_y2, fil_z2,
                          cp_x, cp_y, cp_z,
@@ -278,54 +277,62 @@ def biot_savart_function(fil_x1, fil_y1, fil_z1,
 
     return u, v, w
 
-#
-# def unit_strength_induction_matrix(cps, fils):
-#     """""
-#      set up unit strength induction matrix
-#      & initalize and calculate matrices for velocity induced by horseshoe vortex rings
-#     """""
-#
-#     # setting up unit induction matrix with the biot-savart function
-#
-#     unitU_ind = []
-#     unitV_ind = []
-#     unitW_ind = []
-#
-#     for ii in range(len(cps)):
-#         for nn in range(len(cps)):
-#             for jj = 1:2 * N_trail:
-#                 for nb in range(nr_of_blades)
-#
-#                     fil_x1 =
-#                     fil_y1 =
-#                     fil_z1 =
-#                     fil_x2 =
-#                     fil_y2 =
-#                     fil_z2 =
-#                     cp_x =
-#                     cp_y =
-#                     cp_z =
-#                     gamma = 1
-#                     uu, vv, ww = biot_savart_function(fil_x1, fil_y1, fil_z1,
-#                                                         fil_x2, fil_y2, fil_z2,
-#                                                         cp_x, cp_y, cp_z,
-#                                                         gamma)
-#
-#     unitU_ind(ii, nn) = unitU_ind(ii, nn) + uu
-#     unitV_ind(ii, nn) = unitV_ind(ii, nn) + vv
-#     unitW_ind(ii, nn) = unitW_ind(ii, nn) + ww
-#
-#     return [unitU_ind, unitV_ind, unitW_ind]
-'''
+
+def unit_strength_induction_matrix(cps, fils, n, number_of_blades):
+    """""
+     set up unit strength induction matrix
+     & initalize and calculate matrices for velocity induced by horseshoe vortex rings
+    """""
+
+    # setting up unit induction matrix with the biot-savart function
+
+    unitU_ind = np.zeros((len(cps),(n-1)*number_of_blades))
+    unitV_ind = np.zeros((len(cps),(n-1)*number_of_blades))
+    unitW_ind = np.zeros((len(cps),(n-1)*number_of_blades))
+
+
+    for i_cp in range(len(cps)):
+        x_cp,y_cp,z_cp = cps[i_cp]["coordinates"]
+        j=0
+        for i_blade in range(number_of_blades):
+            for i_horse in range(n-1):
+
+                x1s = fils['x1'][np.logical_and(fils['Blade']==i_blade, fils['Horse']==i_horse)]
+                x2s = fils['x2'][np.logical_and(fils['Blade']==i_blade, fils['Horse']==i_horse)]
+                y1s = fils['y1'][np.logical_and(fils['Blade']==i_blade, fils['Horse']==i_horse)]
+                y2s = fils['y2'][np.logical_and(fils['Blade']==i_blade, fils['Horse']==i_horse)]
+                z1s = fils['z1'][np.logical_and(fils['Blade']==i_blade, fils['Horse']==i_horse)]
+                z2s = fils['z2'][np.logical_and(fils['Blade']==i_blade, fils['Horse']==i_horse)]
+                for i_fil in range(len(x1s)):
+                    u,v,w = biot_savart_function(x1s[i_fil],y1s[i_fil],z1s[i_fil],
+                                                 x2s[i_fil],y2s[i_fil],z2s[i_fil],
+                                                 x_cp,y_cp,z_cp,1) #Gamma = 1
+
+                    if np.isnan(u):
+                        u = 0
+
+                    if np.isnan(v):
+                        v = 0
+
+                    if np.isnan(w):
+                        w = 0
+
+                    unitU_ind[i_cp,j] = unitU_ind[i_cp,j] + u
+                    unitV_ind[i_cp,j] = unitV_ind[i_cp,j] + v
+                    unitW_ind[i_cp,j] = unitW_ind[i_cp,j] + w
+                j = j+1
+
+    return unitU_ind, unitV_ind, unitW_ind
+
 if __name__ == '__main__':
     number_of_blades = 3
     R = 50  # m
     r_hub = 0.2 * R
     U0 = 10
     a = 0.25
-
+    n = 5
     # Constant or cosine element spacing on the blade
-    r, dr = geometry_constant(r_hub, R, 5)
+    r, dr = geometry_constant(r_hub, R, n)
     # r,dr = geometry_cosine(r_hub,R,30)
 
     wakelength = 0.05  # how many diameters long the wake shall be prescribed for
@@ -335,114 +342,19 @@ if __name__ == '__main__':
     cps, fils = wake_system_generation(r, dr, U0, a, wakelength, number_of_blades, tip_speed_ratio)
 
 
-
-    # for i in range(len(bound_fils_dict["x1"])):
-    #     x, y, z = [bound_fils_dict["x1"][i], bound_fils_dict["x2"][i]], \
-    #               [bound_fils_dict["y1"][i], bound_fils_dict["y2"][i]], \
-    #               [bound_fils_dict["z1"][i], bound_fils_dict["z2"][i]]
-    #     ax.plot(x, y, z, color='black')
-
-    # angle_rotation = ((2 * np.pi) / number_of_blades)
-    #
-    # fils_new_blades = []
-    # cps_new_blades = []
-    #
-    # for blade_nr in range(number_of_blades):
-    #     theta = angle_rotation * blade_nr
-    #
-    #     for i in range(len(cps)):
-    #         # rotation around X-axis
-    #         temp1 = {"coordinates": [0,
-    #                                  cps[i]["coordinates"][1] * np.cos(theta) - cps[i]["coordinates"][2] * np.sin(
-    #                                      theta),
-    #                                  cps[i]["coordinates"][1] * np.sin(theta) + cps[i]["coordinates"][2] * np.cos(
-    #                                      theta)],
-    #
-    #                  "chord": 0,
-    #
-    #                  "normal": [cps[i]["normal"][0],
-    #                             cps[i]["normal"][1] * np.cos(theta) - cps[i]["normal"][2] * np.sin(theta),
-    #                             cps[i]["normal"][1] * np.sin(theta) + cps[i]["normal"][2] * np.cos(theta)],
-    #
-    #                  "tangential": [cps[i]["tangential"][0],
-    #                                 cps[i]["tangential"][1] * np.cos(theta) - cps[i]["tangential"][2] * np.sin(theta),
-    #                                 cps[i]["tangential"][1] * np.sin(theta) + cps[i]["tangential"][2] * np.cos(theta)]
-    #                  }
-    #
-    #         cps_new_blades.append(temp1)
-    #
-    #     for i in range(len(fils)):
-    #         temp_dict = {"x1": fils[i]["x1"],
-    #                      "y1": fils[i]["y1"] * np.cos(theta) - fils[i]["z1"] * np.sin(theta),
-    #                      "z1": fils[i]["y1"] * np.sin(theta) + fils[i]["z1"] * np.cos(theta),
-    #                      "x2": fils[i]["x2"],
-    #                      "y2": fils[i]["y2"] * np.cos(theta) - fils[i]["z2"] * np.sin(theta),
-    #                      "z2": fils[i]["y2"] * np.sin(theta) + fils[i]["z2"] * np.cos(theta),
-    #                      "Gamma": 0,
-    #                      "Blade": blade_nr,
-    #                      "Horse": fils[i]["Horse"]
-    #                      }
-    #
-    #         fils_new_blades.append(temp_dict)
-    #
-
-    # cps_all = cps + cps_new_blades
-    # fils_all = fils + fils_new_blades
-    #
-    # # unit_ind_matrix = unit_induction_matrix_function(cps_all, fils_all)
-    #
-    # fils_dict = {"x1": [],
-    #             "y1": [],
-    #             "z1": [],
-    #             "x2": [],
-    #             "y2": [],
-    #             "z2": [],
-    #             "Gamma": [],
-    #             "Blade": [],
-    #             "Horse": []}
-    #
-    # for i in range(len(fils_all)):
-    #     fils_dict["x1"].append(fils_all[i]["x1"])
-    #     fils_dict["y1"].append(fils_all[i]["y1"])
-    #     fils_dict["z1"].append(fils_all[i]["z1"])
-    #     fils_dict["x2"].append(fils_all[i]["x2"])
-    #     fils_dict["y2"].append(fils_all[i]["y2"])
-    #     fils_dict["z2"].append(fils_all[i]["z2"])
-    #     fils_dict["Gamma"].append(fils_all[i]["Gamma"])
-    #     fils_dict["Blade"].append(fils_all[i]["Blade"])
-    #     fils_dict["Horse"].append(fils_all[i]["Horse"])
-    # fils_dict["x1"] = np.asarray(fils_dict["x1"])
-    # fils_dict["y1"] = np.asarray(fils_dict["y1"])
-    # fils_dict["z1"] = np.asarray(fils_dict["z1"])
-    # fils_dict["x2"] = np.asarray(fils_dict["x2"])
-    # fils_dict["y2"] = np.asarray(fils_dict["y2"])
-    # fils_dict["z2"] = np.asarray(fils_dict["z2"])
-    # fils_dict["Gamma"] = np.asarray(fils_dict["Gamma"])
-    # fils_dict["Blade"] = np.asarray(fils_dict["Blade"])
-    # fils_dict["Horse"] = np.asarray(fils_dict["Horse"])
-
+    #PLOTTING
     fig = plt.figure()
     ax = plt.axes(projection="3d")
     for i in range(len(fils["x1"])):
         x, y, z = [fils["x1"][i], fils["x2"][i]], [fils["y1"][i], fils["y2"][i]], [fils["z1"][i], fils["z2"][i]]
         ax.plot(x, y, z, color='black')
 
-    # for i in range(len(fils_new_blades)):
-    #     x, y, z = [fils_new_blades[i]["x1"], fils_new_blades[i]["x2"]], \
-    #               [fils_new_blades[i]["y1"], fils_new_blades[i]["y2"]], \
-    #               [fils_new_blades[i]["z1"], fils_new_blades[i]["z2"]]
-    #     ax.plot(x, y, z, color='black')
-
     for i in range(len(cps)):
         x, y, z = cps[i]["coordinates"]
         ax.scatter(x, y, z, c='red', s=100)
-
-    # for i in range(len(cps_new_blades)):
-    #     x, y, z = cps_new_blades[i]["coordinates"]
-    #     ax.scatter(x, y, z, c='red', s=100)
-
     plt.show()
 
+    Ua,Va,Wa = unit_strength_induction_matrix(cps,fils,n,number_of_blades)
 
 
 
