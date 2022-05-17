@@ -174,9 +174,84 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
 
             filaments.append(temp1)
 
-    return controlpoints, filaments
+    angle_rotation = ((2 * np.pi) / number_of_blades)
 
+    fils_new_blades = []
+    cps_new_blades = []
 
+    for blade_nr in range(number_of_blades):
+        theta = angle_rotation * blade_nr
+
+        for i in range(len(controlpoints)):
+            # rotation around X-axis
+            temp1 = {"coordinates": [0,
+                                     controlpoints[i]["coordinates"][1] * np.cos(theta) - controlpoints[i]["coordinates"][2] * np.sin(
+                                         theta),
+                                     controlpoints[i]["coordinates"][1] * np.sin(theta) + controlpoints[i]["coordinates"][2] * np.cos(
+                                         theta)],
+
+                     "chord": 0,
+
+                     "normal": [controlpoints[i]["normal"][0],
+                                controlpoints[i]["normal"][1] * np.cos(theta) - controlpoints[i]["normal"][2] * np.sin(theta),
+                                controlpoints[i]["normal"][1] * np.sin(theta) + controlpoints[i]["normal"][2] * np.cos(theta)],
+
+                     "tangential": [controlpoints[i]["tangential"][0],
+                                    controlpoints[i]["tangential"][1] * np.cos(theta) - controlpoints[i]["tangential"][2] * np.sin(theta),
+                                    controlpoints[i]["tangential"][1] * np.sin(theta) + controlpoints[i]["tangential"][2] * np.cos(theta)]
+                     }
+
+            cps_new_blades.append(temp1)
+
+        for i in range(len(filaments)):
+            temp_dict = {"x1": filaments[i]["x1"],
+                         "y1": filaments[i]["y1"] * np.cos(theta) - filaments[i]["z1"] * np.sin(theta),
+                         "z1": filaments[i]["y1"] * np.sin(theta) + filaments[i]["z1"] * np.cos(theta),
+                         "x2": filaments[i]["x2"],
+                         "y2": filaments[i]["y2"] * np.cos(theta) - filaments[i]["z2"] * np.sin(theta),
+                         "z2": filaments[i]["y2"] * np.sin(theta) + filaments[i]["z2"] * np.cos(theta),
+                         "Gamma": 0,
+                         "Blade": blade_nr,
+                         "Horse": filaments[i]["Horse"]
+                         }
+
+            fils_new_blades.append(temp_dict)
+    cps_all = controlpoints + cps_new_blades
+    fils_all = filaments + fils_new_blades
+
+    fils_dict = {"x1": [],
+                 "y1": [],
+                 "z1": [],
+                 "x2": [],
+                 "y2": [],
+                 "z2": [],
+                 "Gamma": [],
+                 "Blade": [],
+                 "Horse": []}
+
+    for i in range(len(fils_all)):
+        fils_dict["x1"].append(fils_all[i]["x1"])
+        fils_dict["y1"].append(fils_all[i]["y1"])
+        fils_dict["z1"].append(fils_all[i]["z1"])
+        fils_dict["x2"].append(fils_all[i]["x2"])
+        fils_dict["y2"].append(fils_all[i]["y2"])
+        fils_dict["z2"].append(fils_all[i]["z2"])
+        fils_dict["Gamma"].append(fils_all[i]["Gamma"])
+        fils_dict["Blade"].append(fils_all[i]["Blade"])
+        fils_dict["Horse"].append(fils_all[i]["Horse"])
+    fils_dict["x1"] = np.asarray(fils_dict["x1"])
+    fils_dict["y1"] = np.asarray(fils_dict["y1"])
+    fils_dict["z1"] = np.asarray(fils_dict["z1"])
+    fils_dict["x2"] = np.asarray(fils_dict["x2"])
+    fils_dict["y2"] = np.asarray(fils_dict["y2"])
+    fils_dict["z2"] = np.asarray(fils_dict["z2"])
+    fils_dict["Gamma"] = np.asarray(fils_dict["Gamma"])
+    fils_dict["Blade"] = np.asarray(fils_dict["Blade"])
+    fils_dict["Horse"] = np.asarray(fils_dict["Horse"])
+
+    return cps_all, fils_dict
+
+'''
 def biot_savart_function(fil_x1, fil_y1, fil_z1,
                          fil_x2, fil_y2, fil_z2,
                          cp_x, cp_y, cp_z,
@@ -241,7 +316,7 @@ def biot_savart_function(fil_x1, fil_y1, fil_z1,
 #     unitW_ind(ii, nn) = unitW_ind(ii, nn) + ww
 #
 #     return [unitU_ind, unitV_ind, unitW_ind]
-
+'''
 if __name__ == '__main__':
     number_of_blades = 3
     R = 50  # m
@@ -253,14 +328,13 @@ if __name__ == '__main__':
     r, dr = geometry_constant(r_hub, R, 5)
     # r,dr = geometry_cosine(r_hub,R,30)
 
-    wakelength = 0.1  # how many diameters long the wake shall be prescribed for
+    wakelength = 0.05  # how many diameters long the wake shall be prescribed for
     nt = 50
     tip_speed_ratio = 8
 
     cps, fils = wake_system_generation(r, dr, U0, a, wakelength, number_of_blades, tip_speed_ratio)
 
-    fig = plt.figure()
-    ax = plt.axes(projection="3d")
+
 
     # for i in range(len(bound_fils_dict["x1"])):
     #     x, y, z = [bound_fils_dict["x1"][i], bound_fils_dict["x2"][i]], \
@@ -268,91 +342,107 @@ if __name__ == '__main__':
     #               [bound_fils_dict["z1"][i], bound_fils_dict["z2"][i]]
     #     ax.plot(x, y, z, color='black')
 
-    angle_rotation = ((2 * np.pi) / number_of_blades)
+    # angle_rotation = ((2 * np.pi) / number_of_blades)
+    #
+    # fils_new_blades = []
+    # cps_new_blades = []
+    #
+    # for blade_nr in range(number_of_blades):
+    #     theta = angle_rotation * blade_nr
+    #
+    #     for i in range(len(cps)):
+    #         # rotation around X-axis
+    #         temp1 = {"coordinates": [0,
+    #                                  cps[i]["coordinates"][1] * np.cos(theta) - cps[i]["coordinates"][2] * np.sin(
+    #                                      theta),
+    #                                  cps[i]["coordinates"][1] * np.sin(theta) + cps[i]["coordinates"][2] * np.cos(
+    #                                      theta)],
+    #
+    #                  "chord": 0,
+    #
+    #                  "normal": [cps[i]["normal"][0],
+    #                             cps[i]["normal"][1] * np.cos(theta) - cps[i]["normal"][2] * np.sin(theta),
+    #                             cps[i]["normal"][1] * np.sin(theta) + cps[i]["normal"][2] * np.cos(theta)],
+    #
+    #                  "tangential": [cps[i]["tangential"][0],
+    #                                 cps[i]["tangential"][1] * np.cos(theta) - cps[i]["tangential"][2] * np.sin(theta),
+    #                                 cps[i]["tangential"][1] * np.sin(theta) + cps[i]["tangential"][2] * np.cos(theta)]
+    #                  }
+    #
+    #         cps_new_blades.append(temp1)
+    #
+    #     for i in range(len(fils)):
+    #         temp_dict = {"x1": fils[i]["x1"],
+    #                      "y1": fils[i]["y1"] * np.cos(theta) - fils[i]["z1"] * np.sin(theta),
+    #                      "z1": fils[i]["y1"] * np.sin(theta) + fils[i]["z1"] * np.cos(theta),
+    #                      "x2": fils[i]["x2"],
+    #                      "y2": fils[i]["y2"] * np.cos(theta) - fils[i]["z2"] * np.sin(theta),
+    #                      "z2": fils[i]["y2"] * np.sin(theta) + fils[i]["z2"] * np.cos(theta),
+    #                      "Gamma": 0,
+    #                      "Blade": blade_nr,
+    #                      "Horse": fils[i]["Horse"]
+    #                      }
+    #
+    #         fils_new_blades.append(temp_dict)
+    #
 
-    fils_new_blades = []
-    cps_new_blades = []
+    # cps_all = cps + cps_new_blades
+    # fils_all = fils + fils_new_blades
+    #
+    # # unit_ind_matrix = unit_induction_matrix_function(cps_all, fils_all)
+    #
+    # fils_dict = {"x1": [],
+    #             "y1": [],
+    #             "z1": [],
+    #             "x2": [],
+    #             "y2": [],
+    #             "z2": [],
+    #             "Gamma": [],
+    #             "Blade": [],
+    #             "Horse": []}
+    #
+    # for i in range(len(fils_all)):
+    #     fils_dict["x1"].append(fils_all[i]["x1"])
+    #     fils_dict["y1"].append(fils_all[i]["y1"])
+    #     fils_dict["z1"].append(fils_all[i]["z1"])
+    #     fils_dict["x2"].append(fils_all[i]["x2"])
+    #     fils_dict["y2"].append(fils_all[i]["y2"])
+    #     fils_dict["z2"].append(fils_all[i]["z2"])
+    #     fils_dict["Gamma"].append(fils_all[i]["Gamma"])
+    #     fils_dict["Blade"].append(fils_all[i]["Blade"])
+    #     fils_dict["Horse"].append(fils_all[i]["Horse"])
+    # fils_dict["x1"] = np.asarray(fils_dict["x1"])
+    # fils_dict["y1"] = np.asarray(fils_dict["y1"])
+    # fils_dict["z1"] = np.asarray(fils_dict["z1"])
+    # fils_dict["x2"] = np.asarray(fils_dict["x2"])
+    # fils_dict["y2"] = np.asarray(fils_dict["y2"])
+    # fils_dict["z2"] = np.asarray(fils_dict["z2"])
+    # fils_dict["Gamma"] = np.asarray(fils_dict["Gamma"])
+    # fils_dict["Blade"] = np.asarray(fils_dict["Blade"])
+    # fils_dict["Horse"] = np.asarray(fils_dict["Horse"])
 
-    for blade_nr in range(number_of_blades):
-        theta = angle_rotation * blade_nr
-
-        for i in range(len(cps)):
-            # rotation around X-axis
-            temp1 = {"coordinates": [0,
-                                     cps[i]["coordinates"][1] * np.cos(theta) - cps[i]["coordinates"][2] * np.sin(
-                                         theta),
-                                     cps[i]["coordinates"][1] * np.sin(theta) + cps[i]["coordinates"][2] * np.cos(
-                                         theta)],
-
-                     "chord": 0,
-
-                     "normal": [cps[i]["normal"][0],
-                                cps[i]["normal"][1] * np.cos(theta) - cps[i]["normal"][2] * np.sin(theta),
-                                cps[i]["normal"][1] * np.sin(theta) + cps[i]["normal"][2] * np.cos(theta)],
-
-                     "tangential": [cps[i]["tangential"][0],
-                                    cps[i]["tangential"][1] * np.cos(theta) - cps[i]["tangential"][2] * np.sin(theta),
-                                    cps[i]["tangential"][1] * np.sin(theta) + cps[i]["tangential"][2] * np.cos(theta)]
-                     }
-
-            cps_new_blades.append(temp1)
-
-        for i in range(len(fils)):
-            temp_dict = {"x1": fils[i]["x1"],
-                         "y1": fils[i]["y1"] * np.cos(theta) - fils[i]["z1"] * np.sin(theta),
-                         "z1": fils[i]["y1"] * np.sin(theta) + fils[i]["z1"] * np.cos(theta),
-                         "x2": fils[i]["x2"],
-                         "y2": fils[i]["y2"] * np.cos(theta) - fils[i]["z2"] * np.sin(theta),
-                         "z2": fils[i]["y2"] * np.sin(theta) + fils[i]["z2"] * np.cos(theta),
-                         "Gamma": 0,
-                         "Blade": blade_nr,
-                         "Horse": fils[i]["Horse"]
-                         }
-
-            fils_new_blades.append(temp_dict)
-
-    for i in range(len(fils)):
-        x, y, z = [fils[i]["x1"], fils[i]["x2"]], [fils[i]["y1"], fils[i]["y2"]], [fils[i]["z1"], fils[i]["z2"]]
+    fig = plt.figure()
+    ax = plt.axes(projection="3d")
+    for i in range(len(fils["x1"])):
+        x, y, z = [fils["x1"][i], fils["x2"][i]], [fils["y1"][i], fils["y2"][i]], [fils["z1"][i], fils["z2"][i]]
         ax.plot(x, y, z, color='black')
 
-    for i in range(len(fils_new_blades)):
-        x, y, z = [fils_new_blades[i]["x1"], fils_new_blades[i]["x2"]], \
-                  [fils_new_blades[i]["y1"], fils_new_blades[i]["y2"]], \
-                  [fils_new_blades[i]["z1"], fils_new_blades[i]["z2"]]
-        ax.plot(x, y, z, color='black')
+    # for i in range(len(fils_new_blades)):
+    #     x, y, z = [fils_new_blades[i]["x1"], fils_new_blades[i]["x2"]], \
+    #               [fils_new_blades[i]["y1"], fils_new_blades[i]["y2"]], \
+    #               [fils_new_blades[i]["z1"], fils_new_blades[i]["z2"]]
+    #     ax.plot(x, y, z, color='black')
 
     for i in range(len(cps)):
         x, y, z = cps[i]["coordinates"]
         ax.scatter(x, y, z, c='red', s=100)
 
-    for i in range(len(cps_new_blades)):
-        x, y, z = cps_new_blades[i]["coordinates"]
-        ax.scatter(x, y, z, c='red', s=100)
+    # for i in range(len(cps_new_blades)):
+    #     x, y, z = cps_new_blades[i]["coordinates"]
+    #     ax.scatter(x, y, z, c='red', s=100)
 
     plt.show()
 
-    cps_all = cps + cps_new_blades
-    fils_all = fils + fils_new_blades
 
-    # unit_ind_matrix = unit_induction_matrix_function(cps_all, fils_all)
 
-    fils_dict = {"x1": [],
-                "y1": [],
-                "z1": [],
-                "x2": [],
-                "y2": [],
-                "z2": [],
-                "Gamma": [],
-                "Blade": [],
-                "Horse": []}
 
-    for i in range(len(fils_all)):
-        fils_dict["x1"].append(fils_all[i]["x1"])
-        fils_dict["y1"].append(fils_all[i]["y1"])
-        fils_dict["z1"].append(fils_all[i]["z1"])
-        fils_dict["x2"].append(fils_all[i]["x2"])
-        fils_dict["y2"].append(fils_all[i]["y2"])
-        fils_dict["z2"].append(fils_all[i]["z2"])
-        fils_dict["Gamma"].append(fils_all[i]["Gamma"])
-        fils_dict["Blade"].append(fils_all[i]["Blade"])
-        fils_dict["Horse"].append(fils_all[i]["Horse"])
