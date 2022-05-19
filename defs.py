@@ -162,20 +162,20 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
         filaments.append(temp2)
 
         for j in range(len(theta_array) - 1):
-            xt = filaments[len(filaments) - 1]["x1"]
-            yt = filaments[len(filaments) - 1]["y1"]
-            zt = filaments[len(filaments) - 1]["z1"]
+            xt = filaments[len(filaments) - 1]["x2"]
+            yt = filaments[len(filaments) - 1]["y2"]
+            zt = filaments[len(filaments) - 1]["z2"]
 
             dx = (theta_array[j + 1] - theta_array[j]) / tip_speed_ratio * D / 2
             dy = (np.cos(-theta_array[j + 1]) - np.cos(-theta_array[j])) * (r_array[ri + 1] - 0.5 * dr[ri + 1])
             dz = (np.sin(-theta_array[j + 1]) - np.sin(-theta_array[j])) * (r_array[ri + 1] - 0.5 * dr[ri + 1])
 
-            temp1 = {"x1": xt + dx,
-                     "y1": yt + dy,
-                     "z1": zt + dz,
-                     "x2": xt,
-                     "y2": yt,
-                     "z2": zt,
+            temp1 = {"x1": xt,
+                     "y1": yt,
+                     "z1": zt,
+                     "x2": xt + dx,
+                     "y2": yt + dy,
+                     "z2": zt + dz,
                      "Gamma": 0,
                      "Blade": 0,
                      "Horse": ri
@@ -271,6 +271,7 @@ def biot_savart_function(fil_x1, fil_y1, fil_z1,
                          fil_x2, fil_y2, fil_z2,
                          cp_x, cp_y, cp_z,
                          gamma):
+
     R1 = np.sqrt((cp_x - fil_x1) ** 2 + (cp_y - fil_y1) ** 2 + (cp_z - fil_z1) ** 2)
     R2 = np.sqrt((cp_x - fil_x2) ** 2 + (cp_y - fil_y2) ** 2 + (cp_z - fil_z2) ** 2)
 
@@ -308,6 +309,7 @@ def unit_strength_induction_matrix(cps, fils, n, number_of_blades):
 
     for i_cp in range(len(cps)):
         x_cp, y_cp, z_cp = cps[i_cp]["coordinates"]
+
         j = 0
         for i_blade in range(number_of_blades):
             for i_horse in range(n - 1):
@@ -318,6 +320,7 @@ def unit_strength_induction_matrix(cps, fils, n, number_of_blades):
                 y2s = fils['y2'][np.logical_and(fils['Blade'] == i_blade, fils['Horse'] == i_horse)]
                 z1s = fils['z1'][np.logical_and(fils['Blade'] == i_blade, fils['Horse'] == i_horse)]
                 z2s = fils['z2'][np.logical_and(fils['Blade'] == i_blade, fils['Horse'] == i_horse)]
+
                 for i_fil in range(len(x1s)):
                     u, v, w = biot_savart_function(x1s[i_fil], y1s[i_fil], z1s[i_fil],
                                                    x2s[i_fil], y2s[i_fil], z2s[i_fil],
@@ -405,10 +408,10 @@ if __name__ == '__main__':
     r_hub = 0.2 * R
     U0 = 10
     a = 0.25
-    n = 5
+    nr_blade_elements = 20
     rho = 1.225
     # Constant or cosine element spacing on the blade
-    r, dr = geometry_constant(r_hub, R, n)
+    r, dr = geometry_constant(r_hub, R, nr_blade_elements)
     # r,dr = geometry_cosine(r_hub,R,30)
     iterations = 100
     gamma_convergence_weight = 0.3
@@ -420,17 +423,20 @@ if __name__ == '__main__':
 
     cps, fils = wake_system_generation(r, dr, U0, a, wakelength, number_of_blades, tip_speed_ratio)
 
-    # PLOTTING
-    fig = plt.figure()
-    ax = plt.axes(projection="3d")
-    for i in range(len(fils["x1"])):
-        x, y, z = [fils["x1"][i], fils["x2"][i]], [fils["y1"][i], fils["y2"][i]], [fils["z1"][i], fils["z2"][i]]
-        ax.plot(x, y, z, color='black')
+    # # PLOTTING
+    # fig = plt.figure()
+    # ax = plt.axes(projection="3d")
+    # for i in range(len(fils["x1"])):
+    #     x, y, z = [fils["x1"][i], fils["x2"][i]], [fils["y1"][i], fils["y2"][i]], [fils["z1"][i], fils["z2"][i]]
+    #     ax.plot(x, y, z, color='black')
+    #
+    # for i in range(len(cps)):
+    #     x, y, z = cps[i]["coordinates"]
+    #     ax.scatter(x, y, z, c='red', s=100)
+    # plt.show()
 
-    for i in range(len(cps)):
-        x, y, z = cps[i]["coordinates"]
-        ax.scatter(x, y, z, c='red', s=100)
-    plt.show()
+    Ua, Va, Wa = unit_strength_induction_matrix(cps, fils, nr_blade_elements, number_of_blades)
 
-    Ua, Va, Wa = unit_strength_induction_matrix(cps, fils, n, number_of_blades)
-    a, gamma = iteration(iterations, Ua, Va, Wa, cps, tip_speed_ratio, gamma_convergence_weight, error_limit)
+    # a, gamma = iteration(iterations, Ua, Va, Wa, cps, tip_speed_ratio, gamma_convergence_weight, error_limit)
+
+
