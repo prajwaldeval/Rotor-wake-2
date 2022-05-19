@@ -20,6 +20,14 @@ def geometry_constant(r_hub, R, n):
     return r, dr
 
 
+def aero_coeffs(alpha, filename='polar DU95W180.xlsx'):
+    data = np.array(pd.read_excel(filename))[3:, :]
+    data = np.array(data, dtype='float64')
+    cl = np.interp(alpha, data[:, 0], data[:, 1])
+    cd = np.interp(alpha, data[:, 0], data[:, 2])
+    return cl, cd
+
+
 def blade_geometry(radius):
     # radial = [0, 0.3, .5, .8, 1]
     # chorddist = [.05, .04, .03, .02, .015]
@@ -185,20 +193,26 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
         for i in range(len(controlpoints)):
             # rotation around X-axis
             temp1 = {"coordinates": [0,
-                                     controlpoints[i]["coordinates"][1] * np.cos(theta) - controlpoints[i]["coordinates"][2] * np.sin(
+                                     controlpoints[i]["coordinates"][1] * np.cos(theta) -
+                                     controlpoints[i]["coordinates"][2] * np.sin(
                                          theta),
-                                     controlpoints[i]["coordinates"][1] * np.sin(theta) + controlpoints[i]["coordinates"][2] * np.cos(
+                                     controlpoints[i]["coordinates"][1] * np.sin(theta) +
+                                     controlpoints[i]["coordinates"][2] * np.cos(
                                          theta)],
 
                      "chord": 0,
 
                      "normal": [controlpoints[i]["normal"][0],
-                                controlpoints[i]["normal"][1] * np.cos(theta) - controlpoints[i]["normal"][2] * np.sin(theta),
-                                controlpoints[i]["normal"][1] * np.sin(theta) + controlpoints[i]["normal"][2] * np.cos(theta)],
+                                controlpoints[i]["normal"][1] * np.cos(theta) - controlpoints[i]["normal"][2] * np.sin(
+                                    theta),
+                                controlpoints[i]["normal"][1] * np.sin(theta) + controlpoints[i]["normal"][2] * np.cos(
+                                    theta)],
 
                      "tangential": [controlpoints[i]["tangential"][0],
-                                    controlpoints[i]["tangential"][1] * np.cos(theta) - controlpoints[i]["tangential"][2] * np.sin(theta),
-                                    controlpoints[i]["tangential"][1] * np.sin(theta) + controlpoints[i]["tangential"][2] * np.cos(theta)]
+                                    controlpoints[i]["tangential"][1] * np.cos(theta) - controlpoints[i]["tangential"][
+                                        2] * np.sin(theta),
+                                    controlpoints[i]["tangential"][1] * np.sin(theta) + controlpoints[i]["tangential"][
+                                        2] * np.cos(theta)]
                      }
 
             cps_new_blades.append(temp1)
@@ -251,6 +265,7 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
 
     return cps_all, fils_dict
 
+
 def biot_savart_function(fil_x1, fil_y1, fil_z1,
                          fil_x2, fil_y2, fil_z2,
                          cp_x, cp_y, cp_z,
@@ -286,27 +301,26 @@ def unit_strength_induction_matrix(cps, fils, n, number_of_blades):
 
     # setting up unit induction matrix with the biot-savart function
 
-    unitU_ind = np.zeros((len(cps),(n-1)*number_of_blades))
-    unitV_ind = np.zeros((len(cps),(n-1)*number_of_blades))
-    unitW_ind = np.zeros((len(cps),(n-1)*number_of_blades))
-
+    unitU_ind = np.zeros((len(cps), (n - 1) * number_of_blades))
+    unitV_ind = np.zeros((len(cps), (n - 1) * number_of_blades))
+    unitW_ind = np.zeros((len(cps), (n - 1) * number_of_blades))
 
     for i_cp in range(len(cps)):
-        x_cp,y_cp,z_cp = cps[i_cp]["coordinates"]
-        j=0
+        x_cp, y_cp, z_cp = cps[i_cp]["coordinates"]
+        j = 0
         for i_blade in range(number_of_blades):
-            for i_horse in range(n-1):
+            for i_horse in range(n - 1):
 
-                x1s = fils['x1'][np.logical_and(fils['Blade']==i_blade, fils['Horse']==i_horse)]
-                x2s = fils['x2'][np.logical_and(fils['Blade']==i_blade, fils['Horse']==i_horse)]
-                y1s = fils['y1'][np.logical_and(fils['Blade']==i_blade, fils['Horse']==i_horse)]
-                y2s = fils['y2'][np.logical_and(fils['Blade']==i_blade, fils['Horse']==i_horse)]
-                z1s = fils['z1'][np.logical_and(fils['Blade']==i_blade, fils['Horse']==i_horse)]
-                z2s = fils['z2'][np.logical_and(fils['Blade']==i_blade, fils['Horse']==i_horse)]
+                x1s = fils['x1'][np.logical_and(fils['Blade'] == i_blade, fils['Horse'] == i_horse)]
+                x2s = fils['x2'][np.logical_and(fils['Blade'] == i_blade, fils['Horse'] == i_horse)]
+                y1s = fils['y1'][np.logical_and(fils['Blade'] == i_blade, fils['Horse'] == i_horse)]
+                y2s = fils['y2'][np.logical_and(fils['Blade'] == i_blade, fils['Horse'] == i_horse)]
+                z1s = fils['z1'][np.logical_and(fils['Blade'] == i_blade, fils['Horse'] == i_horse)]
+                z2s = fils['z2'][np.logical_and(fils['Blade'] == i_blade, fils['Horse'] == i_horse)]
                 for i_fil in range(len(x1s)):
-                    u,v,w = biot_savart_function(x1s[i_fil],y1s[i_fil],z1s[i_fil],
-                                                 x2s[i_fil],y2s[i_fil],z2s[i_fil],
-                                                 x_cp,y_cp,z_cp,1) #Gamma = 1
+                    u, v, w = biot_savart_function(x1s[i_fil], y1s[i_fil], z1s[i_fil],
+                                                   x2s[i_fil], y2s[i_fil], z2s[i_fil],
+                                                   x_cp, y_cp, z_cp, 1)  # Gamma = 1
 
                     if np.isnan(u):
                         u = 0
@@ -317,12 +331,53 @@ def unit_strength_induction_matrix(cps, fils, n, number_of_blades):
                     if np.isnan(w):
                         w = 0
 
-                    unitU_ind[i_cp,j] = unitU_ind[i_cp,j] + u
-                    unitV_ind[i_cp,j] = unitV_ind[i_cp,j] + v
-                    unitW_ind[i_cp,j] = unitW_ind[i_cp,j] + w
-                j = j+1
+                    unitU_ind[i_cp, j] = unitU_ind[i_cp, j] + u
+                    unitV_ind[i_cp, j] = unitV_ind[i_cp, j] + v
+                    unitW_ind[i_cp, j] = unitW_ind[i_cp, j] + w
+                j = j + 1
 
     return unitU_ind, unitV_ind, unitW_ind
+
+
+def BE_loads(Vax, Vtan, alpha, c, rho):
+    Vps = Vtan ** 2 + Vax ** 2
+    phi = np.arctan2(Vax, Vtan)
+    # alpha = phi * 180 / np.pi - b
+    cl, cd = aero_coeffs(alpha)
+    L = 0.5 * c * rho * Vps * cl
+    D = 0.5 * c * rho * Vps * cd
+    Faz = L * np.sin(phi) - D * np.cos(phi)
+    Fax = L * np.cos(phi) + D * np.sin(phi)
+    gamma = 0.5 * np.sqrt(Vps) * cl * c  # vorticity
+    phi = phi * 180 / np.pi
+
+    return Vax, Vtan, Fax, Faz, gamma, phi, alpha, cl, cd
+
+
+def iteration(iterations, Ua, Va, Wa, cps, fils, omega, r_array, dr, gamma_convergence_weight):
+    gamma = []
+    for i in range(iterations):
+        u_actual = U0 + Ua
+        for i_cp in range(len(cps)):
+            r = cps[i_cp]["coordinates"][1]
+
+            [c, alpha] = blade_geometry(r)
+
+            v_actual = Va
+            w_actual = Wa - omega * r
+
+            Vax = u_actual
+            Vtan = np.sqrt(v_actual ** 2 + w_actual ** 2)
+
+            omega = tip_speed_ratio * U0 * 1 / R
+
+            Vax_new, Vtan_new, Fax, Faz, gamma_new, phi, alpha, cl, cd = BE_loads(Vax, Vtan, alpha, c, rho)
+
+            # update circulation.
+            gamma[i_cp] = (1 - gamma_convergence_weight) * gamma + gamma_convergence_weight * gamma_new
+
+        # # check convergence
+        # if gamma_new-gamma
 
 if __name__ == '__main__':
     number_of_blades = 3
@@ -331,9 +386,11 @@ if __name__ == '__main__':
     U0 = 10
     a = 0.25
     n = 5
+    rho = 1.225
     # Constant or cosine element spacing on the blade
     r, dr = geometry_constant(r_hub, R, n)
     # r,dr = geometry_cosine(r_hub,R,30)
+    iterations = 1000
 
     wakelength = 0.05  # how many diameters long the wake shall be prescribed for
     nt = 50
@@ -341,8 +398,7 @@ if __name__ == '__main__':
 
     cps, fils = wake_system_generation(r, dr, U0, a, wakelength, number_of_blades, tip_speed_ratio)
 
-
-    #PLOTTING
+    # PLOTTING
     fig = plt.figure()
     ax = plt.axes(projection="3d")
     for i in range(len(fils["x1"])):
@@ -354,7 +410,4 @@ if __name__ == '__main__':
         ax.scatter(x, y, z, c='red', s=100)
     plt.show()
 
-    Ua,Va,Wa = unit_strength_induction_matrix(cps,fils,n,number_of_blades)
-
-
-
+    Ua, Va, Wa = unit_strength_induction_matrix(cps, fils, n, number_of_blades)

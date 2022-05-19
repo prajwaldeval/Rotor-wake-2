@@ -46,20 +46,6 @@ def aero_coeffs(alpha,filename = 'polar DU95W180.xlsx'):
     cd = np.interp(alpha,data[:,0],data[:,2])
     return cl, cd
 
-def BE_loads(a,ap,r,dr,b,c,omega):
-    Vtan = omega*r*(1+ap)
-    Vax = U0*(1-a) #1-a
-    Vps= Vtan**2+Vax**2
-    phi = np.arctan2(Vax,Vtan)
-    alpha = phi*180/np.pi - b
-    cl, cd = aero_coeffs(alpha)
-    L = 0.5*c*rho*Vps*cl
-    D = 0.5*c*rho*Vps*cd
-    Faz = L*np.sin(phi) - D*np.cos(phi)
-    Fax = L*np.cos(phi) + D*np.sin(phi)
-    gamma = 0.5 * np.sqrt(Vps) * cl * c  # vorticity
-    phi = phi*180/np.pi
-    return Vax,Vtan,Fax,Faz,gamma,phi,alpha,cl,cd
 
 def MT_induction(Fax,Faz,r,dr,b,c,Prandtl,Glauert,omega):
     CT = (Fax*nb*dr)/(0.5*rho*(U0**2)*2*np.pi*r*dr)
