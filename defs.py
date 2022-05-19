@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
+import pandas as pd
 import numpy as np
 
 
@@ -354,30 +355,49 @@ def BE_loads(Vax, Vtan, alpha, c, rho):
     return Vax, Vtan, Fax, Faz, gamma, phi, alpha, cl, cd
 
 
-def iteration(iterations, Ua, Va, Wa, cps, fils, omega, r_array, dr, gamma_convergence_weight):
-    gamma = []
+def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_limit):
+    gamma = np.ones(len(cps))
+    gamma_new = np.ones(len(cps))
+
     for i in range(iterations):
-        u_actual = U0 + Ua
+
+
         for i_cp in range(len(cps)):
             r = cps[i_cp]["coordinates"][1]
 
-            [c, alpha] = blade_geometry(r)
+            geodef = blade_geometry(r)
+            c = geodef[0]
+            alpha = geodef[1]
 
-            v_actual = Va
-            w_actual = Wa - omega * r
+            omega = tsr * U0 * 1 / R
+
+            u_actual = U0 + np.sum(Ua[i_cp] * gamma[i_cp])
+            v_actual = np.sum(Va[i_cp] * gamma[i_cp])
+            w_actual = np.sum(Wa[i_cp] * gamma[i_cp]) - omega * r
 
             Vax = u_actual
             Vtan = np.sqrt(v_actual ** 2 + w_actual ** 2)
 
-            omega = tip_speed_ratio * U0 * 1 / R
+            Vax_new, Vtan_new, Fax, Faz, gamma_n, phi, alpha, cl, cd = BE_loads(Vax, Vtan, alpha, c, rho)
 
-            Vax_new, Vtan_new, Fax, Faz, gamma_new, phi, alpha, cl, cd = BE_loads(Vax, Vtan, alpha, c, rho)
+            # update circulation
+            gamma_new[i_cp] = gamma_n
+            gamma[i_cp] = (1 - gamma_convergence_weight) * gamma[i_cp] + gamma_convergence_weight * gamma_new[i_cp]
 
-            # update circulation.
-            gamma[i_cp] = (1 - gamma_convergence_weight) * gamma + gamma_convergence_weight * gamma_new
 
-        # # check convergence
-        # if gamma_new-gamma
+        print(gamma)
+
+        # check convergence
+        ref_error = max(np.abs(gamma_new))
+        ref_error = max(ref_error, 0.001)  # define scale of bound circulation
+
+        error = (np.absolute(gamma_new - gamma)).max()  # difference betweeen iterations
+        error = error / ref_error  # relative error
+        if (error < error_limit):
+            i = iterations - 1
+
+    return a, gamma
+
 
 if __name__ == '__main__':
     number_of_blades = 3
@@ -390,7 +410,9 @@ if __name__ == '__main__':
     # Constant or cosine element spacing on the blade
     r, dr = geometry_constant(r_hub, R, n)
     # r,dr = geometry_cosine(r_hub,R,30)
-    iterations = 1000
+    iterations = 100
+    gamma_convergence_weight = 0.3
+    error_limit = 1e-3
 
     wakelength = 0.05  # how many diameters long the wake shall be prescribed for
     nt = 50
@@ -411,3 +433,4 @@ if __name__ == '__main__':
     plt.show()
 
     Ua, Va, Wa = unit_strength_induction_matrix(cps, fils, n, number_of_blades)
+    a, gamma = iteration(iterations, Ua, Va, Wa, cps, tip_speed_ratio, gamma_convergence_weight, error_limit)
