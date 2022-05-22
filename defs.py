@@ -55,7 +55,7 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
     # t_wake = np.zeros(nt)
 
     n_rotations = (tip_speed_ratio * wakelength) / ((1 - a) * np.pi)
-    theta_array = np.arange(0, n_rotations * 2 * np.pi, np.pi / 10)
+    theta_array = np.arange(0, n_rotations * 2 * np.pi, np.pi / 30)
 
     angle_rotation_first_blade = 0
     cos_rotation = np.cos(angle_rotation_first_blade)
@@ -274,7 +274,7 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
 def biot_savart_function(fil_x1, fil_y1, fil_z1,
                          fil_x2, fil_y2, fil_z2,
                          cp_x, cp_y, cp_z,
-                         gamma):
+                         gamma, core):
     R1 = np.sqrt((cp_x - fil_x1) ** 2 + (cp_y - fil_y1) ** 2 + (cp_z - fil_z1) ** 2)
     R2 = np.sqrt((cp_x - fil_x2) ** 2 + (cp_y - fil_y2) ** 2 + (cp_z - fil_z2) ** 2)
 
@@ -288,6 +288,15 @@ def biot_savart_function(fil_x1, fil_y1, fil_z1,
             cp_z - fil_z1)
     R02 = (fil_x2 - fil_x1) * (cp_x - fil_x2) + (fil_y2 - fil_y1) * (cp_y - fil_y2) + (fil_z2 - fil_z1) * (
             cp_z - fil_z2)
+
+    if R12_sqr < core ** 2:
+        R12_sqr = core ** 2
+
+    if R1 < core:
+        R1 = core
+
+    if R2 < core:
+        R2 = core
 
     K = gamma / (4 * np.pi * R12_sqr) * (R01 / R1 - R02 / R2)
 
@@ -327,7 +336,7 @@ def unit_strength_induction_matrix(cps, fils, n, number_of_blades):
                 for i_fil in range(len(x1s)):
                     u, v, w = biot_savart_function(x1s[i_fil], y1s[i_fil], z1s[i_fil],
                                                    x2s[i_fil], y2s[i_fil], z2s[i_fil],
-                                                   x_cp, y_cp, z_cp, 1)  # Gamma = 1
+                                                   x_cp, y_cp, z_cp, 1, 0.00001)  # Gamma = 1, core = 0.00001
 
                     if np.isnan(u) or abs(u) > 1:
                         u = 0
@@ -366,6 +375,8 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
     gamma = np.ones(len(cps))
     gamma_new = np.ones(len(cps))
     a_new = np.empty(len(cps))
+    Fax_ll = np.empty(len(cps))
+    Faz_ll = np.empty(len(cps))
 
     for i in range(iterations):
 
@@ -386,15 +397,8 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
             # before rotaion, z is tangential and  is normal
             Vnor = v_ind * np.cos(angle) - w_ind * np.sin(angle)
             Vtan = v_ind * np.sin(angle) + w_ind * np.cos(angle) - omega * radius
-            if i_cp == 0 or i_cp == 4 or i_cp == 8:
-                print('vtan = ', Vtan)
-                print(i_cp)
-            # velocities = np.array([u_actual, v_actual, w_actual])
-            # tangential_dir = cps[i_cp]["tangential"]
-            #
-            # Vtan = abs(np.dot(velocities, tangential_dir) * np.cos(twist_and_pitch - np.pi/2))
-
-            # print("axial velocity", Vax, "tangential velocity", Vtan)
+            # if i_cp == 0 or i_cp == 4 or i_cp == 8:
+            #     print('vax = ', Vax, 'vtan = ', Vtan, "at i_cp = ", i_cp)
 
             Vax_new, Vtan_new, Fax, Faz, gamma_n, phi, alpha, cl, cd = BE_loads(Vax, Vtan, twist_and_pitch, c, rho)
 
@@ -403,7 +407,10 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
             gamma[i_cp] = (1 - gamma_convergence_weight) * gamma[i_cp] + gamma_convergence_weight * gamma_new[i_cp]
 
             # update a
-            a_new[i_cp] = 1 - (Vax_new / U0)
+            a_new[i_cp] = - (Vax_new - U0/ U0)
+
+            Fax_ll[i_cp] = Fax
+            Faz_ll[i_cp] = Faz
 
         # check convergence
         ref_error = max(np.abs(gamma_new))
@@ -416,7 +423,7 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
             print("convergence threshold met at iteration", i)
             break
 
-    return a_new, gamma
+    return a_new, gamma, Fax_ll, Faz_ll
 
 
 if __name__ == '__main__':
@@ -425,14 +432,14 @@ if __name__ == '__main__':
     r_hub = 0.2 * R
     U0 = 10
     a = 0.25
-    nr_blade_elements = 5
+    nr_blade_elements = 25
     rho = 1.225
     # Constant or cosine element spacing on the blade
-    r, dr = geometry_constant(r_hub, R, nr_blade_elements)
-    # r,dr = geometry_cosine(r_hub,R,30)
+    # r, dr = geometry_constant(r_hub, R, nr_blade_elements)
+    r, dr = geometry_cosine(r_hub, R, nr_blade_elements)
     iterations = 200
-    gamma_convergence_weight = 0.4
-    error_limit = 1e-2
+    gamma_convergence_weight = 0.3
+    error_limit = 1e-3
 
     wakelength = 0.5  # how many diameters long the wake shall be prescribed for
     nt = 50
@@ -454,6 +461,18 @@ if __name__ == '__main__':
 
     Ua, Va, Wa = unit_strength_induction_matrix(cps, fils, nr_blade_elements, number_of_blades)
 
-    a_new, gamma = iteration(iterations, Ua, Va, Wa, cps, tip_speed_ratio, gamma_convergence_weight, error_limit)
+    a_new, gamma, Fax_ll, Faz_ll = iteration(iterations, Ua, Va, Wa, cps, tip_speed_ratio, gamma_convergence_weight, error_limit)
 
     print(a_new)
+
+    fig1 = plt.figure()
+    plt.plot(r[0:(nr_blade_elements - 1)], a_new[0:(nr_blade_elements - 1)])
+    plt.show()
+
+    fig2 = plt.figure()
+    plt.plot(r[1:(nr_blade_elements - 3)], Fax_ll[0:(nr_blade_elements - 3)])
+    plt.show()
+
+    fig3 = plt.figure()
+    plt.plot(r[1:(nr_blade_elements - 3)], Faz_ll[0:(nr_blade_elements - 3)])
+    plt.show()
