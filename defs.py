@@ -338,14 +338,14 @@ def unit_strength_induction_matrix(cps, fils, n, number_of_blades):
                                                    x2s[i_fil], y2s[i_fil], z2s[i_fil],
                                                    x_cp, y_cp, z_cp, 1, 0.00001)  # Gamma = 1, core = 0.00001
 
-                    if np.isnan(u) or abs(u) > 1:
-                        u = 0
-
-                    if np.isnan(v) or abs(v) > 1:
-                        v = 0
-
-                    if np.isnan(w) or abs(w) > 1:
-                        w = 0
+                    # if np.isnan(u) or abs(u) > 1:
+                    #     u = 0
+                    #
+                    # if np.isnan(v) or abs(v) > 1:
+                    #     v = 0
+                    #
+                    # if np.isnan(w) or abs(w) > 1:
+                    #     w = 0
 
                     unitU_ind[i_cp, j] = unitU_ind[i_cp, j] + u
                     unitV_ind[i_cp, j] = unitV_ind[i_cp, j] + v
@@ -379,35 +379,34 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
     Faz_ll = np.empty(len(cps))
 
     for i in range(iterations):
-
         for i_cp in range(len(cps)):
+
+            # position and geometry at current control point
             radius = np.sqrt(cps[i_cp]["coordinates"][1] ** 2 + cps[i_cp]["coordinates"][2] ** 2)
             geodef = blade_geometry(radius)
             c = geodef[0]
             twist_and_pitch = geodef[1]
 
+            # velocities at current control point
             omega = tsr * U0 * 1 / R
-
             u_ind = np.sum(Ua[i_cp] * gamma[i_cp])
             v_ind = np.sum(Va[i_cp] * gamma[i_cp])
             w_ind = np.sum(Wa[i_cp] * gamma[i_cp])
 
+            # axial and tangential
             Vax = u_ind + U0
             angle = cps[i_cp]["angle"]
-            # before rotaion, z is tangential and  is normal
-            Vnor = v_ind * np.cos(angle) - w_ind * np.sin(angle)
             Vtan = v_ind * np.sin(angle) + w_ind * np.cos(angle) - omega * radius
-            # if i_cp == 0 or i_cp == 4 or i_cp == 8:
-            #     print('vax = ', Vax, 'vtan = ', Vtan, "at i_cp = ", i_cp)
 
+            # send to BEM model function
             Vax_new, Vtan_new, Fax, Faz, gamma_n, phi, alpha, cl, cd = BE_loads(Vax, Vtan, twist_and_pitch, c, rho)
 
             # update circulation
             gamma_new[i_cp] = gamma_n
             gamma[i_cp] = (1 - gamma_convergence_weight) * gamma[i_cp] + gamma_convergence_weight * gamma_new[i_cp]
 
-            # update a
-            a_new[i_cp] = - (Vax_new - U0/ U0)
+            # update axial induction factor
+            a_new[i_cp] = 1 - (Vax_new / U0)
 
             Fax_ll[i_cp] = Fax
             Faz_ll[i_cp] = Faz
@@ -432,7 +431,7 @@ if __name__ == '__main__':
     r_hub = 0.2 * R
     U0 = 10
     a = 0.25
-    nr_blade_elements = 25
+    nr_blade_elements = 7
     rho = 1.225
     # Constant or cosine element spacing on the blade
     # r, dr = geometry_constant(r_hub, R, nr_blade_elements)
@@ -441,9 +440,9 @@ if __name__ == '__main__':
     gamma_convergence_weight = 0.3
     error_limit = 1e-3
 
-    wakelength = 0.5  # how many diameters long the wake shall be prescribed for
+    wakelength = 4  # how many diameters long the wake shall be prescribed for
     nt = 50
-    tip_speed_ratio = 4
+    tip_speed_ratio = 6
 
     cps, fils = wake_system_generation(r, dr, U0, a, wakelength, number_of_blades, tip_speed_ratio)
 
@@ -464,15 +463,15 @@ if __name__ == '__main__':
     a_new, gamma, Fax_ll, Faz_ll = iteration(iterations, Ua, Va, Wa, cps, tip_speed_ratio, gamma_convergence_weight, error_limit)
 
     print(a_new)
+    #
+    # fig1 = plt.figure()
+    # plt.plot(r[0:(nr_blade_elements - 1)], a_new[0:(nr_blade_elements - 1)])
+    # plt.show()
 
-    fig1 = plt.figure()
-    plt.plot(r[0:(nr_blade_elements - 1)], a_new[0:(nr_blade_elements - 1)])
-    plt.show()
-
-    fig2 = plt.figure()
-    plt.plot(r[1:(nr_blade_elements - 3)], Fax_ll[0:(nr_blade_elements - 3)])
-    plt.show()
-
-    fig3 = plt.figure()
-    plt.plot(r[1:(nr_blade_elements - 3)], Faz_ll[0:(nr_blade_elements - 3)])
-    plt.show()
+    # fig2 = plt.figure()
+    # plt.plot(r[1:(nr_blade_elements - 3)], Fax_ll[0:(nr_blade_elements - 3)])
+    # plt.show()
+    #
+    # fig3 = plt.figure()
+    # plt.plot(r[1:(nr_blade_elements - 3)], Faz_ll[0:(nr_blade_elements - 3)])
+    # plt.show()
