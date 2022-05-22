@@ -69,7 +69,8 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
         temp1 = {"coordinates": [0, r_array[ri], 0],
                  "chord": geodef[0],
                  "normal": [np.cos(angle), 0, -1 * np.sin(angle)],
-                 "tangential": [-1 * np.sin(angle), 0, -1 * np.cos(angle)]
+                 "tangential": [-1 * np.sin(angle), 0, -1 * np.cos(angle)],
+                 "angle": 0
                  }
 
         controlpoints.append(temp1)
@@ -188,7 +189,7 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
     fils_new_blades = []
     cps_new_blades = []
 
-    for blade_nr in range(1,number_of_blades):
+    for blade_nr in range(1, number_of_blades):
         theta = angle_rotation * blade_nr
 
         for i in range(len(controlpoints)):
@@ -213,7 +214,9 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
                                     controlpoints[i]["tangential"][1] * np.cos(theta) - controlpoints[i]["tangential"][
                                         2] * np.sin(theta),
                                     controlpoints[i]["tangential"][1] * np.sin(theta) + controlpoints[i]["tangential"][
-                                        2] * np.cos(theta)]
+                                        2] * np.cos(theta)],
+                     "angle": theta
+
                      }
 
             cps_new_blades.append(temp1)
@@ -344,10 +347,10 @@ def unit_strength_induction_matrix(cps, fils, n, number_of_blades):
     return unitU_ind, unitV_ind, unitW_ind
 
 
-def BE_loads(Vax, Vtan, alpha, c, rho):
+def BE_loads(Vax, Vtan, beta, c, rho):
     Vps = Vtan ** 2 + Vax ** 2
     phi = np.arctan2(Vax, Vtan)
-    # alpha = phi * 180 / np.pi - b
+    alpha = phi * 180 / np.pi - beta
     cl, cd = aero_coeffs(alpha)
     L = 0.5 * c * rho * Vps * cl
     D = 0.5 * c * rho * Vps * cd
@@ -367,25 +370,31 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
     for i in range(iterations):
 
         for i_cp in range(len(cps)):
-            radius = np.sqrt(cps[i_cp]["coordinates"][1]**2 + cps[i_cp]["coordinates"][2]**2)
+            radius = np.sqrt(cps[i_cp]["coordinates"][1] ** 2 + cps[i_cp]["coordinates"][2] ** 2)
             geodef = blade_geometry(radius)
             c = geodef[0]
-            twist_and_pitch = geodef[1]  * np.pi / 180
+            twist_and_pitch = geodef[1]
 
             omega = tsr * U0 * 1 / R
 
-            u_actual = U0 + np.sum(Ua[i_cp] * gamma[i_cp])
-            v_actual = np.sum(Va[i_cp] * gamma[i_cp])
-            w_actual = np.sum(Wa[i_cp] * gamma[i_cp]) - omega * radius
+            u_ind = np.sum(Ua[i_cp] * gamma[i_cp])
+            v_ind = np.sum(Va[i_cp] * gamma[i_cp])
+            w_ind = np.sum(Wa[i_cp] * gamma[i_cp])
 
-            Vax = u_actual
+            Vax = u_ind + U0
+            angle = cps[i_cp]["angle"]
+            # before rotaion, z is tangential and  is normal
+            Vnor = v_ind * np.cos(angle) - w_ind * np.sin(angle)
+            Vtan = v_ind * np.sin(angle) + w_ind * np.cos(angle) - omega * radius
+            if i_cp == 0 or i_cp == 4 or i_cp == 8:
+                print('vtan = ', Vtan)
+                print(i_cp)
+            # velocities = np.array([u_actual, v_actual, w_actual])
+            # tangential_dir = cps[i_cp]["tangential"]
+            #
+            # Vtan = abs(np.dot(velocities, tangential_dir) * np.cos(twist_and_pitch - np.pi/2))
 
-            velocities = np.array([u_actual, v_actual, w_actual])
-            tangential_dir = cps[i_cp]["tangential"]
-
-            Vtan = abs(np.dot(velocities, tangential_dir) * np.cos(twist_and_pitch - np.pi/2))
-
-            print("axial velocity", Vax, "tangential velocity", Vtan)
+            # print("axial velocity", Vax, "tangential velocity", Vtan)
 
             Vax_new, Vtan_new, Fax, Faz, gamma_n, phi, alpha, cl, cd = BE_loads(Vax, Vtan, twist_and_pitch, c, rho)
 
@@ -394,7 +403,7 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
             gamma[i_cp] = (1 - gamma_convergence_weight) * gamma[i_cp] + gamma_convergence_weight * gamma_new[i_cp]
 
             # update a
-            a_new[i_cp] = 1 - (u_actual / U0)
+            a_new[i_cp] = 1 - (Vax_new / U0)
 
         # check convergence
         ref_error = max(np.abs(gamma_new))
@@ -402,7 +411,7 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
 
         error = (np.absolute(gamma_new - gamma)).max()  # difference betweeen iterations
         error = error / ref_error  # relative error
-        print("we are at iteration", i)
+        # print("we are at iteration", i)
         if error < error_limit:
             print("convergence threshold met at iteration", i)
             break
@@ -416,18 +425,18 @@ if __name__ == '__main__':
     r_hub = 0.2 * R
     U0 = 10
     a = 0.25
-    nr_blade_elements = 20
+    nr_blade_elements = 5
     rho = 1.225
     # Constant or cosine element spacing on the blade
     r, dr = geometry_constant(r_hub, R, nr_blade_elements)
     # r,dr = geometry_cosine(r_hub,R,30)
     iterations = 200
-    gamma_convergence_weight = 0.3
+    gamma_convergence_weight = 0.4
     error_limit = 1e-2
 
-    wakelength = 1  # how many diameters long the wake shall be prescribed for
+    wakelength = 0.5  # how many diameters long the wake shall be prescribed for
     nt = 50
-    tip_speed_ratio = 8
+    tip_speed_ratio = 4
 
     cps, fils = wake_system_generation(r, dr, U0, a, wakelength, number_of_blades, tip_speed_ratio)
 
