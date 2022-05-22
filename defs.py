@@ -188,7 +188,7 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
     fils_new_blades = []
     cps_new_blades = []
 
-    for blade_nr in range(number_of_blades):
+    for blade_nr in range(1,number_of_blades):
         theta = angle_rotation * blade_nr
 
         for i in range(len(controlpoints)):
@@ -231,6 +231,7 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
                          }
 
             fils_new_blades.append(temp_dict)
+
     cps_all = controlpoints + cps_new_blades
     fils_all = filaments + fils_new_blades
 
@@ -366,22 +367,27 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
     for i in range(iterations):
 
         for i_cp in range(len(cps)):
-            r = cps[i_cp]["coordinates"][1]
-
-            geodef = blade_geometry(r)
+            radius = np.sqrt(cps[i_cp]["coordinates"][1]**2 + cps[i_cp]["coordinates"][2]**2)
+            geodef = blade_geometry(radius)
             c = geodef[0]
-            alpha = geodef[1]
+            twist_and_pitch = geodef[1]
 
             omega = tsr * U0 * 1 / R
 
             u_actual = U0 + np.sum(Ua[i_cp] * gamma[i_cp])
             v_actual = np.sum(Va[i_cp] * gamma[i_cp])
-            w_actual = np.sum(Wa[i_cp] * gamma[i_cp]) - omega * r
+            w_actual = np.sum(Wa[i_cp] * gamma[i_cp]) - omega * radius
 
             Vax = u_actual
-            Vtan = np.sqrt(v_actual ** 2 + w_actual ** 2)
 
-            Vax_new, Vtan_new, Fax, Faz, gamma_n, phi, alpha, cl, cd = BE_loads(Vax, Vtan, alpha, c, rho)
+            velocities = np.array([u_actual, v_actual, w_actual])
+            tangential_dir = cps[i_cp]["tangential"]
+
+            Vtan = abs(np.dot(velocities, tangential_dir))  # * np.cos(twist_and_pitch)
+
+            print("axial velocity", Vax, "tangential velocity", Vtan)
+
+            Vax_new, Vtan_new, Fax, Faz, gamma_n, phi, alpha, cl, cd = BE_loads(Vax, Vtan, twist_and_pitch, c, rho)
 
             # update circulation
             gamma_new[i_cp] = gamma_n
@@ -390,16 +396,16 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
             # update a
             a_new[i_cp] = 1 - (u_actual / U0)
 
-        # print(gamma)
-
         # check convergence
         ref_error = max(np.abs(gamma_new))
         ref_error = max(ref_error, 0.001)  # define scale of bound circulation
 
         error = (np.absolute(gamma_new - gamma)).max()  # difference betweeen iterations
         error = error / ref_error  # relative error
-        if (error < error_limit):
-            i = iterations - 1
+        print("we are at iteration", i)
+        if error < error_limit:
+            print("convergence threshold met at iteration", i)
+            break
 
     return a_new, gamma
 
@@ -415,9 +421,9 @@ if __name__ == '__main__':
     # Constant or cosine element spacing on the blade
     r, dr = geometry_constant(r_hub, R, nr_blade_elements)
     # r,dr = geometry_cosine(r_hub,R,30)
-    iterations = 100
+    iterations = 200
     gamma_convergence_weight = 0.3
-    error_limit = 1e-3
+    error_limit = 1e-2
 
     wakelength = 0.05  # how many diameters long the wake shall be prescribed for
     nt = 50
@@ -425,17 +431,17 @@ if __name__ == '__main__':
 
     cps, fils = wake_system_generation(r, dr, U0, a, wakelength, number_of_blades, tip_speed_ratio)
 
-    # # PLOTTING
-    # fig = plt.figure()
-    # ax = plt.axes(projection="3d")
-    # for i in range(len(fils["x1"])):
-    #     x, y, z = [fils["x1"][i], fils["x2"][i]], [fils["y1"][i], fils["y2"][i]], [fils["z1"][i], fils["z2"][i]]
-    #     ax.plot(x, y, z, color='black')
-    #
-    # for i in range(len(cps)):
-    #     x, y, z = cps[i]["coordinates"]
-    #     ax.scatter(x, y, z, c='red', s=50)
-    # plt.show()
+    # PLOTTING
+    fig = plt.figure()
+    ax = plt.axes(projection="3d")
+    for i in range(len(fils["x1"])):
+        x, y, z = [fils["x1"][i], fils["x2"][i]], [fils["y1"][i], fils["y2"][i]], [fils["z1"][i], fils["z2"][i]]
+        ax.plot(x, y, z, color='black')
+
+    for i in range(len(cps)):
+        x, y, z = cps[i]["coordinates"]
+        ax.scatter(x, y, z, c='red', s=50)
+    plt.show()
 
     Ua, Va, Wa = unit_strength_induction_matrix(cps, fils, nr_blade_elements, number_of_blades)
 
