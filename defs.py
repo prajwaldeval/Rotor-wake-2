@@ -47,14 +47,14 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
     Ur = U0 * (1 - a)  # axial velocity just after rotor
     UD = U0 * (1 - 2 * a)  # axial velocity 'infinity' downwind of rotor
 
-    # U_wake = np.linspace(Ur, UD, nt)  # axial velocity at every discretised location in the wake
-    U_wake = Ur  # at least initially, as indicated by the tutorial
+    U_wake = np.linspace(Ur, UD, nt)  # axial velocity at every discretised location in the wake
+    # U_wake = Ur  # at least initially, as indicated by the tutorial
 
     D = (r_array[-1] + 0.5 * dr[-1]) * 2  # rotor diameter
     # z_wake = np.linspace(0, wakelength * D, nt)  # z(axial) coordinate of wake discretised points
     # t_wake = np.zeros(nt)
 
-    n_rotations = (tip_speed_ratio * np.pi * wakelength) / (1 - a)
+    n_rotations = (tip_speed_ratio * wakelength) / ((1 - a) * np.pi)
     theta_array = np.arange(0, n_rotations * 2 * np.pi, np.pi / 10)
 
     angle_rotation_first_blade = 0
@@ -370,7 +370,7 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
             radius = np.sqrt(cps[i_cp]["coordinates"][1]**2 + cps[i_cp]["coordinates"][2]**2)
             geodef = blade_geometry(radius)
             c = geodef[0]
-            twist_and_pitch = geodef[1]
+            twist_and_pitch = geodef[1]  * np.pi / 180
 
             omega = tsr * U0 * 1 / R
 
@@ -383,7 +383,7 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
             velocities = np.array([u_actual, v_actual, w_actual])
             tangential_dir = cps[i_cp]["tangential"]
 
-            Vtan = abs(np.dot(velocities, tangential_dir))  # * np.cos(twist_and_pitch)
+            Vtan = abs(np.dot(velocities, tangential_dir) * np.cos(twist_and_pitch - np.pi/2))
 
             print("axial velocity", Vax, "tangential velocity", Vtan)
 
@@ -425,7 +425,7 @@ if __name__ == '__main__':
     gamma_convergence_weight = 0.3
     error_limit = 1e-2
 
-    wakelength = 0.05  # how many diameters long the wake shall be prescribed for
+    wakelength = 1  # how many diameters long the wake shall be prescribed for
     nt = 50
     tip_speed_ratio = 8
 
