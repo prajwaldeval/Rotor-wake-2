@@ -271,7 +271,6 @@ def biot_savart_function(fil_x1, fil_y1, fil_z1,
                          fil_x2, fil_y2, fil_z2,
                          cp_x, cp_y, cp_z,
                          gamma):
-
     R1 = np.sqrt((cp_x - fil_x1) ** 2 + (cp_y - fil_y1) ** 2 + (cp_z - fil_z1) ** 2)
     R2 = np.sqrt((cp_x - fil_x2) ** 2 + (cp_y - fil_y2) ** 2 + (cp_z - fil_z2) ** 2)
 
@@ -326,18 +325,19 @@ def unit_strength_induction_matrix(cps, fils, n, number_of_blades):
                                                    x2s[i_fil], y2s[i_fil], z2s[i_fil],
                                                    x_cp, y_cp, z_cp, 1)  # Gamma = 1
 
-                    if np.isnan(u):
+                    if np.isnan(u) or abs(u) > 1:
                         u = 0
 
-                    if np.isnan(v):
+                    if np.isnan(v) or abs(v) > 1:
                         v = 0
 
-                    if np.isnan(w):
+                    if np.isnan(w) or abs(w) > 1:
                         w = 0
 
                     unitU_ind[i_cp, j] = unitU_ind[i_cp, j] + u
                     unitV_ind[i_cp, j] = unitV_ind[i_cp, j] + v
                     unitW_ind[i_cp, j] = unitW_ind[i_cp, j] + w
+
                 j = j + 1
 
     return unitU_ind, unitV_ind, unitW_ind
@@ -361,9 +361,9 @@ def BE_loads(Vax, Vtan, alpha, c, rho):
 def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_limit):
     gamma = np.ones(len(cps))
     gamma_new = np.ones(len(cps))
+    a_new = np.empty(len(cps))
 
     for i in range(iterations):
-
 
         for i_cp in range(len(cps)):
             r = cps[i_cp]["coordinates"][1]
@@ -387,8 +387,10 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
             gamma_new[i_cp] = gamma_n
             gamma[i_cp] = (1 - gamma_convergence_weight) * gamma[i_cp] + gamma_convergence_weight * gamma_new[i_cp]
 
+            # update a
+            a_new[i_cp] = 1 - (u_actual / U0)
 
-        print(gamma)
+        # print(gamma)
 
         # check convergence
         ref_error = max(np.abs(gamma_new))
@@ -399,7 +401,7 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
         if (error < error_limit):
             i = iterations - 1
 
-    return a, gamma
+    return a_new, gamma
 
 
 if __name__ == '__main__':
@@ -432,11 +434,11 @@ if __name__ == '__main__':
     #
     # for i in range(len(cps)):
     #     x, y, z = cps[i]["coordinates"]
-    #     ax.scatter(x, y, z, c='red', s=100)
+    #     ax.scatter(x, y, z, c='red', s=50)
     # plt.show()
 
     Ua, Va, Wa = unit_strength_induction_matrix(cps, fils, nr_blade_elements, number_of_blades)
 
-    # a, gamma = iteration(iterations, Ua, Va, Wa, cps, tip_speed_ratio, gamma_convergence_weight, error_limit)
+    a_new, gamma = iteration(iterations, Ua, Va, Wa, cps, tip_speed_ratio, gamma_convergence_weight, error_limit)
 
-
+    print(a_new)
