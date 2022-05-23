@@ -92,25 +92,28 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
         geodef = blade_geometry(r_array[ri] / R)
         angle = geodef[1] * np.pi / 180
 
-        # # my variant
-        # temp1 = {"x1": geodef[0] * np.sin(-angle),
-        #          "y1": (r_array[ri] - 0.5 * dr[ri]) * cos_rotation,
-        #          "z1": (r_array[ri] - 0.5 * dr[ri]) * sin_rotation,
-        #          "x2": 0,
-        #          "y2": (r_array[ri] - 0.5 * dr[ri]) * cos_rotation,
-        #          "z2": (r_array[ri] - 0.5 * dr[ri]) * sin_rotation,
-        #          "Gamma": 0}
-
-        # Ferreira's variant
+        # my variant
         temp1 = {"x1": geodef[0] * np.sin(-angle),
-                 "y1": (r_array[ri] - 0.5 * dr[ri]),
-                 "z1": -1 * geodef[0] * np.cos(angle),
+                 "y1": (r_array[ri] - 0.5 * dr[ri]) * cos_rotation,
+                 "z1": (r_array[ri] - 0.5 * dr[ri]) * sin_rotation,
                  "x2": 0,
-                 "y2": (r_array[ri] - 0.5 * dr[ri]),
-                 "z2": 0,
+                 "y2": (r_array[ri] - 0.5 * dr[ri]) * cos_rotation,
+                 "z2": (r_array[ri] - 0.5 * dr[ri]) * sin_rotation,
                  "Gamma": 0,
                  "Blade": 0,
                  "Horse": ri}
+
+
+        # # Ferreira's variant
+        # temp1 = {"x1": geodef[0] * np.sin(-angle),
+        #          "y1": (r_array[ri] - 0.5 * dr[ri]),
+        #          "z1": -1 * geodef[0] * np.cos(angle),
+        #          "x2": 0,
+        #          "y2": (r_array[ri] - 0.5 * dr[ri]),
+        #          "z2": 0,
+        #          "Gamma": 0,
+        #          "Blade": 0,
+        #          "Horse": ri}
 
         filaments.append(temp1)
 
@@ -139,26 +142,28 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
         geodef = blade_geometry(r_array[ri] / R)
         angle = geodef[1] * np.pi / 180
 
-        # # my variant
-        # temp2 = {"x1": geodef[0] * np.sin(angle),
-        #          "y1": (r_array[ri] + 0.5 * dr[ri]) * cos_rotation,
-        #          "z1": (r_array[ri] + 0.5 * dr[ri]) * sin_rotation,
-        #          "x2": 0,
-        #          "y2": (r_array[ri] + 0.5 * dr[ri]) * cos_rotation,
-        #          "z2": (r_array[ri] + 0.5 * dr[ri]) * sin_rotation,
-        #          "Gamma": 0}
-
-        # Ferreira's variant
-        temp2 = {"x1": 0,
-                 "y1": (r_array[ri + 1] - 0.5 * dr[ri + 1]),
-                 "z1": 0,
-                 "x2": geodef[0] * np.sin(-angle),
-                 "y2": (r_array[ri + 1] - 0.5 * dr[ri + 1]),
-                 "z2": -1 * geodef[0] * np.cos(angle),
+        # my variant
+        temp2 = {"x1": geodef[0] * np.sin(angle),
+                 "y1": (r_array[ri] + 0.5 * dr[ri]) * cos_rotation,
+                 "z1": (r_array[ri] + 0.5 * dr[ri]) * sin_rotation,
+                 "x2": 0,
+                 "y2": (r_array[ri] + 0.5 * dr[ri]) * cos_rotation,
+                 "z2": (r_array[ri] + 0.5 * dr[ri]) * sin_rotation,
                  "Gamma": 0,
                  "Blade": 0,
-                 "Horse": ri
-                 }
+                 "Horse": ri}
+
+        # # Ferreira's variant
+        # temp2 = {"x1": 0,
+        #          "y1": (r_array[ri + 1] - 0.5 * dr[ri + 1]),
+        #          "z1": 0,
+        #          "x2": geodef[0] * np.sin(-angle),
+        #          "y2": (r_array[ri + 1] - 0.5 * dr[ri + 1]),
+        #          "z2": -1 * geodef[0] * np.cos(angle),
+        #          "Gamma": 0,
+        #          "Blade": 0,
+        #          "Horse": ri
+        #          }
 
         filaments.append(temp2)
 
@@ -368,7 +373,7 @@ def BE_loads(Vax, Vtan, beta, c, rho):
     gamma = 0.5 * np.sqrt(Vps) * cl * c  # vorticity
     phi = phi * 180 / np.pi
 
-    return Vax, Vtan, Fax, Faz, gamma, phi, alpha, cl, cd
+    return Fax, Faz, gamma, phi, alpha, cl, cd
 
 
 def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_limit):
@@ -389,9 +394,9 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
 
             # velocities at current control point
             omega = tsr * U0 * 1 / R
-            u_ind = np.sum(Ua[i_cp] * gamma[i_cp])
-            v_ind = np.sum(Va[i_cp] * gamma[i_cp])
-            w_ind = np.sum(Wa[i_cp] * gamma[i_cp])
+            u_ind = np.sum(Ua[i_cp] * gamma)
+            v_ind = np.sum(Va[i_cp] * gamma)
+            w_ind = np.sum(Wa[i_cp] * gamma)
 
             # axial and tangential
             Vax = u_ind + U0
@@ -399,14 +404,14 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
             Vtan = v_ind * np.sin(angle) + w_ind * np.cos(angle) - omega * radius
 
             # send to BEM model function
-            Vax_new, Vtan_new, Fax, Faz, gamma_n, phi, alpha, cl, cd = BE_loads(Vax, Vtan, twist_and_pitch, c, rho)
+            Fax, Faz, gamma_n, phi, alpha, cl, cd = BE_loads(Vax, Vtan, twist_and_pitch, c, rho)
 
             # update circulation
             gamma_new[i_cp] = gamma_n
             gamma[i_cp] = (1 - gamma_convergence_weight) * gamma[i_cp] + gamma_convergence_weight * gamma_new[i_cp]
 
             # update axial induction factor
-            a_new[i_cp] = 1 - (Vax_new / U0)
+            a_new[i_cp] = 1 - (Vax / U0)
 
             Fax_ll[i_cp] = Fax
             Faz_ll[i_cp] = Faz
@@ -431,16 +436,16 @@ if __name__ == '__main__':
     r_hub = 0.2 * R
     U0 = 10
     a = 0.25
-    nr_blade_elements = 21
+    nr_blade_elements = 7
     rho = 1.225
     # Constant or cosine element spacing on the blade
-    # r, dr = geometry_constant(r_hub, R, nr_blade_elements)
-    r, dr = geometry_cosine(r_hub, R, nr_blade_elements)
+    r, dr = geometry_constant(r_hub, R, nr_blade_elements)
+    # r, dr = geometry_cosine(r_hub, R, nr_blade_elements)
     iterations = 200
     gamma_convergence_weight = 0.3
     error_limit = 0.01
 
-    wakelength = 2  # how many diameters long the wake shall be prescribed for
+    wakelength = 1 # how many diameters long the wake shall be prescribed for
     nt = 50
     tip_speed_ratio = 6
 
@@ -463,10 +468,10 @@ if __name__ == '__main__':
     a_new, gamma, Fax_ll, Faz_ll = iteration(iterations, Ua, Va, Wa, cps, tip_speed_ratio, gamma_convergence_weight, error_limit)
 
     print(a_new)
-    #
-    # fig1 = plt.figure()
-    # plt.plot(r[0:(nr_blade_elements - 1)], a_new[0:(nr_blade_elements - 1)])
-    # plt.show()
+
+    fig1 = plt.figure()
+    plt.plot(r[0:(nr_blade_elements - 1)], a_new[0:(nr_blade_elements - 1)])
+    plt.show()
 
     # fig2 = plt.figure()
     # plt.plot(r[1:(nr_blade_elements - 3)], Fax_ll[0:(nr_blade_elements - 3)])
