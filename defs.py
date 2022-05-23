@@ -336,7 +336,7 @@ def unit_strength_induction_matrix(cps, fils, n, number_of_blades):
                 for i_fil in range(len(x1s)):
                     u, v, w = biot_savart_function(x1s[i_fil], y1s[i_fil], z1s[i_fil],
                                                    x2s[i_fil], y2s[i_fil], z2s[i_fil],
-                                                   x_cp, y_cp, z_cp, 1, 0.00001)  # Gamma = 1, core = 0.00001
+                                                   x_cp, y_cp, z_cp, gamma=1, core=0.5)
 
                     # if np.isnan(u) or abs(u) > 1:
                     #     u = 0
@@ -431,16 +431,16 @@ if __name__ == '__main__':
     r_hub = 0.2 * R
     U0 = 10
     a = 0.25
-    nr_blade_elements = 7
+    nr_blade_elements = 21
     rho = 1.225
     # Constant or cosine element spacing on the blade
     # r, dr = geometry_constant(r_hub, R, nr_blade_elements)
     r, dr = geometry_cosine(r_hub, R, nr_blade_elements)
     iterations = 200
     gamma_convergence_weight = 0.3
-    error_limit = 1e-3
+    error_limit = 0.01
 
-    wakelength = 4  # how many diameters long the wake shall be prescribed for
+    wakelength = 2  # how many diameters long the wake shall be prescribed for
     nt = 50
     tip_speed_ratio = 6
 
