@@ -1,0 +1,15 @@
+Nondimensional Plots (also against BEM):
+1. spanwise alpha
+2. spanwise phi
+3. spanwise gamma
+4. spanwise a and ap
+5. spanwise Fax and Faz
+6. CT and CQ and CP vs lambda (tip speed ratio)
+
+Plots for sensitivity
+1. Uwake
+2. constant vs cosine spacing
+3. nr of blade elements
+4. dtheta increments
+5. wakelength (also how many iterations it takes)
+

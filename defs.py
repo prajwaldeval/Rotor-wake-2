@@ -24,18 +24,20 @@ def geometry_constant(r_hub, R, n):
 def aero_coeffs(alpha, filename='polar DU95W180.xlsx'):
     data = np.array(pd.read_excel(filename))[3:, :]
     data = np.array(data, dtype='float64')
+    if alpha>30.06 or alpha<-16.0:
+        print("AoA out of bounds")
     cl = np.interp(alpha, data[:, 0], data[:, 1])
     cd = np.interp(alpha, data[:, 0], data[:, 2])
     return cl, cd
 
 
-def blade_geometry(radius):
+def blade_geometry(r_R):
     # radial = [0, 0.3, .5, .8, 1]
     # chorddist = [.05, .04, .03, .02, .015]
     # twistdist = [-12, -8, -5, -4, 0.]
     pitch = 2
-    chord = 3 * (1 - radius) + 1
-    twist = -14 * (1 - radius)
+    chord = 3 * (1 - r_R) + 1
+    twist = -14 * (1 - r_R)
     result = [chord, twist + pitch]
     return result
 
@@ -62,7 +64,7 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
     sin_rotation = np.sin(angle_rotation_first_blade)
 
     for ri in range(len(r_array) - 1):
-        geodef = blade_geometry(r_array[ri])  # chord, twist+pitch=phi
+        geodef = blade_geometry(r_array[ri]/R)  # chord, twist+pitch=phi
         angle = geodef[1] * np.pi / 180
 
         """" Defining Control Points """
@@ -343,15 +345,6 @@ def unit_strength_induction_matrix(cps, fils, n, number_of_blades):
                                                    x2s[i_fil], y2s[i_fil], z2s[i_fil],
                                                    x_cp, y_cp, z_cp, gamma=1, core=0.5)
 
-                    # if np.isnan(u) or abs(u) > 1:
-                    #     u = 0
-                    #
-                    # if np.isnan(v) or abs(v) > 1:
-                    #     v = 0
-                    #
-                    # if np.isnan(w) or abs(w) > 1:
-                    #     w = 0
-
                     unitU_ind[i_cp, j] = unitU_ind[i_cp, j] + u
                     unitV_ind[i_cp, j] = unitV_ind[i_cp, j] + v
                     unitW_ind[i_cp, j] = unitW_ind[i_cp, j] + w
@@ -363,9 +356,10 @@ def unit_strength_induction_matrix(cps, fils, n, number_of_blades):
 
 def BE_loads(Vax, Vtan, beta, c, rho):
     Vps = Vtan ** 2 + Vax ** 2
-    phi = np.arctan2(Vax, Vtan)
-    alpha = phi * 180 / np.pi - beta
+    phi = np.arctan(Vax/Vtan)
+    alpha = phi * 180 / np.pi - beta # could be minus beta, to check
     cl, cd = aero_coeffs(alpha)
+    print("cl",cl,"cd",cd,"at AoA",alpha)
     L = 0.5 * c * rho * Vps * cl
     D = 0.5 * c * rho * Vps * cd
     Faz = L * np.sin(phi) - D * np.cos(phi)
@@ -376,7 +370,7 @@ def BE_loads(Vax, Vtan, beta, c, rho):
     return Fax, Faz, gamma, phi, alpha, cl, cd
 
 
-def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_limit):
+def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_limit, R):
     gamma = np.ones(len(cps))
     gamma_new = np.ones(len(cps))
     a_new = np.empty(len(cps))
@@ -384,44 +378,60 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
     Faz_ll = np.empty(len(cps))
 
     for i in range(iterations):
+
+        u_ind = Ua.dot(gamma)
+        v_ind = Va.dot(gamma)
+        w_ind = Wa.dot(gamma)
+
+        # print(u_ind)
+
         for i_cp in range(len(cps)):
 
             # position and geometry at current control point
             radius = np.sqrt(cps[i_cp]["coordinates"][1] ** 2 + cps[i_cp]["coordinates"][2] ** 2)
-            geodef = blade_geometry(radius)
+            geodef = blade_geometry(radius/R)
             c = geodef[0]
             twist_and_pitch = geodef[1]
 
+
             # velocities at current control point
-            omega = tsr * U0 * 1 / R
-            u_ind = np.sum(Ua[i_cp] * gamma)
-            v_ind = np.sum(Va[i_cp] * gamma)
-            w_ind = np.sum(Wa[i_cp] * gamma)
+            omega = tsr * U0 * 1 / radius
+
+            Vrot = np.cross([-omega, 0, 0], cps[i_cp]["coordinates"])
 
             # axial and tangential
-            Vax = u_ind + U0
-            angle = cps[i_cp]["angle"]
-            Vtan = v_ind * np.sin(angle) + w_ind * np.cos(angle) - omega * radius
+            vel_perceived = [U0 + u_ind[i_cp] + Vrot[0], v_ind[i_cp] + Vrot[1], w_ind[i_cp] + Vrot[2]]
+            Vax = vel_perceived[0]
+
+            azimdir = np.cross([-1 / radius, 0, 0], cps[i_cp]["coordinates"])
+            Vtan = np.dot(azimdir, vel_perceived)
+
+
+            #
+            # angle = cps[i_cp]["angle"]
+            # Vtan = -v_ind[i_cp] * np.sin(angle) - w_ind[i_cp] * np.cos(angle) - omega * radius
+
+            # print(Vax, Vtan)
 
             # send to BEM model function
-            Fax, Faz, gamma_n, phi, alpha, cl, cd = BE_loads(Vax, Vtan, twist_and_pitch, c, rho)
-
-            # update circulation
-            gamma_new[i_cp] = gamma_n
-            gamma[i_cp] = (1 - gamma_convergence_weight) * gamma[i_cp] + gamma_convergence_weight * gamma_new[i_cp]
+            # print("beta is ", twist_and_pitch, "deg")
+            Fax, Faz, gamma_new, phi, alpha, cl, cd = BE_loads(Vax, Vtan, twist_and_pitch, c, rho)
+            #
+            # print("gamma from BEM, new at every i_cp", gamma_new)
 
             # update axial induction factor
-            a_new[i_cp] = 1 - (Vax / U0)
+            a_new[i_cp] = 1 - Vax / U0
 
-            Fax_ll[i_cp] = Fax
-            Faz_ll[i_cp] = Faz
+        # update circulation
+        gamma = (1 - gamma_convergence_weight) * gamma + gamma_convergence_weight * gamma_new
+        print(gamma)
 
-        # check convergence
-        ref_error = max(np.abs(gamma_new))
-        ref_error = max(ref_error, 0.001)  # define scale of bound circulation
+        # # check convergence
+        # ref_error = max(np.abs(gamma_new))
+        # ref_error = max(ref_error, 0.001)  # define scale of bound circulation
 
         error = (np.absolute(gamma_new - gamma)).max()  # difference betweeen iterations
-        error = error / ref_error  # relative error
+        # error = error / ref_error  # relative error
         # print("we are at iteration", i)
         if error < error_limit:
             print("convergence threshold met at iteration", i)
@@ -436,14 +446,14 @@ if __name__ == '__main__':
     r_hub = 0.2 * R
     U0 = 10
     a = 0.25
-    nr_blade_elements = 7
+    nr_blade_elements = 20
     rho = 1.225
     # Constant or cosine element spacing on the blade
     r, dr = geometry_constant(r_hub, R, nr_blade_elements)
     # r, dr = geometry_cosine(r_hub, R, nr_blade_elements)
     iterations = 200
     gamma_convergence_weight = 0.3
-    error_limit = 0.01
+    error_limit = 0.001
 
     wakelength = 1 # how many diameters long the wake shall be prescribed for
     nt = 50
@@ -465,7 +475,7 @@ if __name__ == '__main__':
 
     Ua, Va, Wa = unit_strength_induction_matrix(cps, fils, nr_blade_elements, number_of_blades)
 
-    a_new, gamma, Fax_ll, Faz_ll = iteration(iterations, Ua, Va, Wa, cps, tip_speed_ratio, gamma_convergence_weight, error_limit)
+    a_new, gamma, Fax_ll, Faz_ll = iteration(iterations, Ua, Va, Wa, cps, tip_speed_ratio, gamma_convergence_weight, error_limit,R)
 
     print(a_new)
 
