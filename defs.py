@@ -392,7 +392,7 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
             twist_and_pitch = geodef[1]
 
             # velocities at current control point
-            omega = tsr * U0 * 1 / radius
+            omega = tsr * U0 * 1 / radius #should be R??
 
             Vrot = np.cross([-omega, 0, 0], cps[i_cp]["coordinates"])
 
@@ -456,23 +456,19 @@ def create_second_rotor_wake(cps, fils, y_offset, phase_difference):
                          "angle": theta
 
                          }
+def coefficients(Fax, Faz, r, dr, nb, rho, U0, TSR):
+    CT = 0
+    CP = 0
+    R = r[-1] + 0.5*dr[-1]
+    omega = TSR * U0 / R
+    for i in range(len(r)-1):
+        CT =+ (dr[i]*Fax[i]*nb)/(0.5*rho*U0**2 * np.pi * R)
+        CP =+ (dr[i]*Faz[i]*nb*r[i]*omega)/(0.5*rho*U0**3 * np.pi * R)
+    return CT, CP
 
-        # translation in y-direction with the offset value
-        cps_second[i]["coordinates"][1] = cps_second[i]["coordinates"][1] + y_offset
+        cps.append(temp1)
 
-        global fils_second
-        fils_second = copy.deepcopy(fils)
-
-        for j in range(len(fils_second["x1"])):
-            fils_second["y1"][j] = fils["y1"][j] * np.cos(theta) - fils["z1"][j] * np.sin(theta) + y_offset
-            fils_second["z1"][j] = fils["y1"][j] * np.sin(theta) + fils["z1"][j] * np.cos(theta)
-            fils_second["y2"][j] = fils["y2"][j] * np.cos(theta) - fils["z2"][j] * np.sin(theta) + y_offset
-            fils_second["z2"][j] = fils["y2"][j] * np.sin(theta) + fils["z2"][j] * np.cos(theta)
-            fils_second["Blade"][j] = fils_second["Blade"][j] + 3
-
-
-
-    return cps_second, fils_second
+    return cps
 
 
 if __name__ == '__main__':
@@ -500,6 +496,10 @@ if __name__ == '__main__':
     y_offset = 2 * (2 * R)  # [m]
     phase_difference = 60  # [deg]
     cps_second, fils_second = create_second_rotor_wake(cps, fils, y_offset, phase_difference)
+    # # 2nd rotor generation
+    # y_offset = 100  # [m]
+    # phase_difference = 60  # [deg]
+    # cps_second = create_second_rotor_wake(cps, fils, y_offset, phase_difference)
 
     # Plotting of wake system
     fig = plt.figure()
@@ -547,3 +547,19 @@ if __name__ == '__main__':
     # plt.plot(r_flip[0:(nr_blade_elements - 1)], Faz_ll[0:(nr_blade_elements - 1)]/norm)
     # plt.title("Azimuthal Normalised Force 'F_az'")
     # plt.show()
+
+    fig2 = plt.figure()
+    plt.plot(r_flip[0:(nr_blade_elements - 1)], Fax_ll[0:(nr_blade_elements - 1)]/norm)
+    plt.title(r'$\lambda = 8$')
+    plt.ylabel(r'$C_{ax}$')
+    plt.xlabel(r'$r/R$')
+    plt.grid()
+    plt.show()
+
+    fig3 = plt.figure()
+    plt.plot(r_flip[0:(nr_blade_elements - 1)], Faz_ll[0:(nr_blade_elements - 1)]/norm)
+    plt.title(r'$\lambda = 8$')
+    plt.xlabel(r'$r/R$')
+    plt.ylabel(r'$C_{az}$')
+    plt.grid()
+    plt.show()
