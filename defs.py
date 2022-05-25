@@ -361,8 +361,8 @@ def BE_loads(Vax, Vtan, beta, c, rho):
     cl, cd = aero_coeffs(alpha)
     L = 0.5 * c * rho * Vps * cl
     D = 0.5 * c * rho * Vps * cd
-    Faz = L * np.sin(phi) + D * np.cos(phi)
-    Fax = L * np.cos(phi) - D * np.sin(phi)
+    Faz = L * np.sin(phi) - D * np.cos(phi)
+    Fax = L * np.cos(phi) + D * np.sin(phi)
     gamma = 0.5 * np.sqrt(Vps) * cl * c  # vorticity
     phi = phi * 180 / np.pi
 
@@ -432,13 +432,45 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
     return a_new, gamma, Fax_ll, Faz_ll
 
 
+def create_second_rotor_wake(cps, fils, y_offset, phase_difference):
+    theta = phase_difference * np.pi/180
+    for i in range(len(cps)):
+        cps[i]["coordinates"][1] = cps[i]["coordinates"][1] + y_offset
+
+        # rotation around X-axis
+        temp1 = {"coordinates": [0,
+                                 cps[i]["coordinates"][1] * np.cos(theta) -
+                                 cps[i]["coordinates"][2] * np.sin(theta),
+                                 cps[i]["coordinates"][1] * np.sin(theta) +
+                                 cps[i]["coordinates"][2] * np.cos(theta)],
+
+                 "chord": 0,
+
+                 "normal": [cps[i]["normal"][0],
+                            cps[i]["normal"][1] * np.cos(theta) - cps[i]["normal"][2] * np.sin(theta),
+                            cps[i]["normal"][1] * np.sin(theta) + cps[i]["normal"][2] * np.cos(theta)],
+
+                 "tangential": [cps[i]["tangential"][0],
+                                cps[i]["tangential"][1] * np.cos(theta) - cps[i]["tangential"][
+                                    2] * np.sin(theta),
+                                cps[i]["tangential"][1] * np.sin(theta) + cps[i]["tangential"][
+                                    2] * np.cos(theta)],
+                 "angle": theta
+
+                 }
+
+        cps.append(temp1)
+
+    return cps
+
+
 if __name__ == '__main__':
     number_of_blades = 3
     R = 50  # m
     r_hub = 0.2 * R
     U0 = 10
     a = 0.25
-    nr_blade_elements = 25
+    nr_blade_elements = 6
     rho = 1.225
     # Constant or cosine element spacing on the blade
     r, dr = geometry_constant(r_hub, R, nr_blade_elements)
@@ -449,38 +481,52 @@ if __name__ == '__main__':
 
     wakelength = 2 # how many diameters long the wake shall be prescribed for
     nt = 50
-    tip_speed_ratio = 6
+    tip_speed_ratio = 8
 
     cps, fils = wake_system_generation(r, dr, U0, a, wakelength, number_of_blades, tip_speed_ratio)
 
-    # # PLOTTING
-    # fig = plt.figure()
-    # ax = plt.axes(projection="3d")
-    # for i in range(len(fils["x1"])):
-    #     x, y, z = [fils["x1"][i], fils["x2"][i]], [fils["y1"][i], fils["y2"][i]], [fils["z1"][i], fils["z2"][i]]
-    #     ax.plot(x, y, z, color='black')
+    # 2nd rotor generation
+    y_offset = 100  # [m]
+    phase_difference = 60  # [deg]
+    cps_second = create_second_rotor_wake(cps, fils, y_offset, phase_difference)
+
+    # Plotting of wake system
+    fig = plt.figure()
+    ax = plt.axes(projection="3d")
+    for i in range(len(fils["x1"])):
+        x, y, z = [fils["x1"][i], fils["x2"][i]], [fils["y1"][i], fils["y2"][i]], [fils["z1"][i], fils["z2"][i]]
+        ax.plot(x, y, z, color='black')
+
+    for i in range(len(cps_second)):
+        x, y, z = cps_second[i]["coordinates"]
+        ax.scatter(x, y, z, c='red', s=50)
+
+    for i in range(len(cps)):
+        x, y, z = cps[i]["coordinates"]
+        ax.scatter(x, y, z, c='red', s=50)
+
+    plt.show()
+
+    # Ua, Va, Wa = unit_strength_induction_matrix(cps, fils, nr_blade_elements, number_of_blades)
     #
-    # for i in range(len(cps)):
-    #     x, y, z = cps[i]["coordinates"]
-    #     ax.scatter(x, y, z, c='red', s=50)
+    # a_new, gamma, Fax_ll, Faz_ll = iteration(iterations, Ua, Va, Wa,
+    #                                          cps, tip_speed_ratio,
+    #                                          gamma_convergence_weight, error_limit, R)
+    #
+    # r_flip = np.flip(r/R)
+    # norm = 0.5 * rho * U0 ** 2 * R
+    #
+    # fig1 = plt.figure()
+    # plt.plot(r_flip[0:(nr_blade_elements - 1)], a_new[0:(nr_blade_elements - 1)])
+    # plt.title("Axial Induction Factor 'a'")
     # plt.show()
-
-    Ua, Va, Wa = unit_strength_induction_matrix(cps, fils, nr_blade_elements, number_of_blades)
-
-    a_new, gamma, Fax_ll, Faz_ll = iteration(iterations, Ua, Va, Wa,
-                                             cps, tip_speed_ratio,
-                                             gamma_convergence_weight, error_limit, R)
-
-    r_flip = np.flip(r)
-
-    fig1 = plt.figure()
-    plt.plot(r_flip[0:(nr_blade_elements - 1)], a_new[0:(nr_blade_elements - 1)])
-    plt.show()
-
-    fig2 = plt.figure()
-    plt.plot(r_flip[0:(nr_blade_elements - 1)], Fax_ll[0:(nr_blade_elements - 1)])
-    plt.show()
-
-    fig3 = plt.figure()
-    plt.plot(r_flip[0:(nr_blade_elements - 1)], Faz_ll[0:(nr_blade_elements - 1)])
-    plt.show()
+    #
+    # fig2 = plt.figure()
+    # plt.plot(r_flip[0:(nr_blade_elements - 1)], Fax_ll[0:(nr_blade_elements - 1)]/norm)
+    # plt.title("Axial Normalised Force 'F_ax'")
+    # plt.show()
+    #
+    # fig3 = plt.figure()
+    # plt.plot(r_flip[0:(nr_blade_elements - 1)], Faz_ll[0:(nr_blade_elements - 1)]/norm)
+    # plt.title("Azimuthal Normalised Force 'F_az'")
+    # plt.show()

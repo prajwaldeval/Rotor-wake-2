@@ -4,7 +4,7 @@ Nondimensional Plots (also against BEM):
 3. spanwise gamma
 4. spanwise a and ap
 5. spanwise Fax and Faz
-6. CT and CQ and CP vs lambda (tip speed ratio)
+6. CT and CP vs lambda (tip speed ratio)
 
 Plots for sensitivity
 1. Uwake
