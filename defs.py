@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 import pandas as pd
 import numpy as np
+import copy
 
 
 def geometry_cosine(r_hub, R, n):
@@ -24,7 +25,7 @@ def geometry_constant(r_hub, R, n):
 def aero_coeffs(alpha, filename='polar DU95W180.xlsx'):
     data = np.array(pd.read_excel(filename))[3:, :]
     data = np.array(data, dtype='float64')
-    if alpha>30.06 or alpha<-16.0:
+    if alpha > 30.06 or alpha < -16.0:
         print("AoA out of bounds")
     cl = np.interp(alpha, data[:, 0], data[:, 1])
     cd = np.interp(alpha, data[:, 0], data[:, 2])
@@ -64,7 +65,7 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
     sin_rotation = np.sin(angle_rotation_first_blade)
 
     for ri in range(len(r_array) - 1):
-        geodef = blade_geometry(r_array[ri]/R)  # chord, twist+pitch=phi
+        geodef = blade_geometry(r_array[ri] / R)  # chord, twist+pitch=phi
         angle = geodef[1] * np.pi / 180
 
         """" Defining Control Points """
@@ -104,7 +105,6 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
                  "Gamma": 0,
                  "Blade": 0,
                  "Horse": ri}
-
 
         # # Ferreira's variant
         # temp1 = {"x1": geodef[0] * np.sin(-angle),
@@ -356,8 +356,8 @@ def unit_strength_induction_matrix(cps, fils, n, number_of_blades):
 
 def BE_loads(Vax, Vtan, beta, c, rho):
     Vps = Vtan ** 2 + Vax ** 2
-    phi = np.arctan(Vax/Vtan)
-    alpha = phi * 180 / np.pi - beta # could be minus beta, to check
+    phi = np.arctan(Vax / Vtan)
+    alpha = phi * 180 / np.pi - beta  # could be minus beta, to check
     cl, cd = aero_coeffs(alpha)
     L = 0.5 * c * rho * Vps * cl
     D = 0.5 * c * rho * Vps * cd
@@ -385,13 +385,11 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
         # print(u_ind)
 
         for i_cp in range(len(cps)):
-
             # position and geometry at current control point
             radius = np.sqrt(cps[i_cp]["coordinates"][1] ** 2 + cps[i_cp]["coordinates"][2] ** 2)
-            geodef = blade_geometry(radius/R)
+            geodef = blade_geometry(radius / R)
             c = geodef[0]
             twist_and_pitch = geodef[1]
-
 
             # velocities at current control point
             omega = tsr * U0 * 1 / radius
@@ -433,35 +431,48 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
 
 
 def create_second_rotor_wake(cps, fils, y_offset, phase_difference):
-    theta = phase_difference * np.pi/180
-    for i in range(len(cps)):
-        cps[i]["coordinates"][1] = cps[i]["coordinates"][1] + y_offset
-
+    theta = phase_difference * np.pi / 180
+    cps_second = copy.deepcopy(cps)
+    for i in range(len(cps_second)):
         # rotation around X-axis
-        temp1 = {"coordinates": [0,
-                                 cps[i]["coordinates"][1] * np.cos(theta) -
-                                 cps[i]["coordinates"][2] * np.sin(theta),
-                                 cps[i]["coordinates"][1] * np.sin(theta) +
-                                 cps[i]["coordinates"][2] * np.cos(theta)],
+        cps_second[i] = {"coordinates": [0,
+                                         cps_second[i]["coordinates"][1] * np.cos(theta) -
+                                         cps_second[i]["coordinates"][2] * np.sin(theta),
+                                         cps_second[i]["coordinates"][1] * np.sin(theta) +
+                                         cps_second[i]["coordinates"][2] * np.cos(theta)],
 
-                 "chord": 0,
+                         "chord": 0,
 
-                 "normal": [cps[i]["normal"][0],
-                            cps[i]["normal"][1] * np.cos(theta) - cps[i]["normal"][2] * np.sin(theta),
-                            cps[i]["normal"][1] * np.sin(theta) + cps[i]["normal"][2] * np.cos(theta)],
+                         "normal": [cps_second[i]["normal"][0],
+                                    cps_second[i]["normal"][1] * np.cos(theta) - cps_second[i]["normal"][2] * np.sin(
+                                        theta),
+                                    cps_second[i]["normal"][1] * np.sin(theta) + cps[i]["normal"][2] * np.cos(theta)],
 
-                 "tangential": [cps[i]["tangential"][0],
-                                cps[i]["tangential"][1] * np.cos(theta) - cps[i]["tangential"][
-                                    2] * np.sin(theta),
-                                cps[i]["tangential"][1] * np.sin(theta) + cps[i]["tangential"][
-                                    2] * np.cos(theta)],
-                 "angle": theta
+                         "tangential": [cps_second[i]["tangential"][0],
+                                        cps_second[i]["tangential"][1] * np.cos(theta) - cps_second[i]["tangential"][
+                                            2] * np.sin(theta),
+                                        cps_second[i]["tangential"][1] * np.sin(theta) + cps_second[i]["tangential"][
+                                            2] * np.cos(theta)],
+                         "angle": theta
 
-                 }
+                         }
 
-        cps.append(temp1)
+        # translation in y-direction with the offset value
+        cps_second[i]["coordinates"][1] = cps_second[i]["coordinates"][1] + y_offset
 
-    return cps
+        global fils_second
+        fils_second = copy.deepcopy(fils)
+
+        for j in range(len(fils_second["x1"])):
+            fils_second["y1"][j] = fils["y1"][j] * np.cos(theta) - fils["z1"][j] * np.sin(theta) + y_offset
+            fils_second["z1"][j] = fils["y1"][j] * np.sin(theta) + fils["z1"][j] * np.cos(theta)
+            fils_second["y2"][j] = fils["y2"][j] * np.cos(theta) - fils["z2"][j] * np.sin(theta) + y_offset
+            fils_second["z2"][j] = fils["y2"][j] * np.sin(theta) + fils["z2"][j] * np.cos(theta)
+            fils_second["Blade"][j] = fils_second["Blade"][j] + 3
+
+
+
+    return cps_second, fils_second
 
 
 if __name__ == '__main__':
@@ -479,16 +490,16 @@ if __name__ == '__main__':
     gamma_convergence_weight = 0.3
     error_limit = 0.001
 
-    wakelength = 2 # how many diameters long the wake shall be prescribed for
+    wakelength = 1  # how many diameters long the wake shall be prescribed for
     nt = 50
     tip_speed_ratio = 8
 
     cps, fils = wake_system_generation(r, dr, U0, a, wakelength, number_of_blades, tip_speed_ratio)
 
     # 2nd rotor generation
-    y_offset = 100  # [m]
+    y_offset = 2 * (2 * R)  # [m]
     phase_difference = 60  # [deg]
-    cps_second = create_second_rotor_wake(cps, fils, y_offset, phase_difference)
+    cps_second, fils_second = create_second_rotor_wake(cps, fils, y_offset, phase_difference)
 
     # Plotting of wake system
     fig = plt.figure()
@@ -497,13 +508,19 @@ if __name__ == '__main__':
         x, y, z = [fils["x1"][i], fils["x2"][i]], [fils["y1"][i], fils["y2"][i]], [fils["z1"][i], fils["z2"][i]]
         ax.plot(x, y, z, color='black')
 
+    for i in range(len(fils_second["x1"])):
+        x, y, z = [fils_second["x1"][i], fils_second["x2"][i]], \
+                  [fils_second["y1"][i], fils_second["y2"][i]], \
+                  [fils_second["z1"][i], fils_second["z2"][i]]
+        ax.plot(x, y, z, color='black')
+
     for i in range(len(cps_second)):
         x, y, z = cps_second[i]["coordinates"]
         ax.scatter(x, y, z, c='red', s=50)
 
     for i in range(len(cps)):
         x, y, z = cps[i]["coordinates"]
-        ax.scatter(x, y, z, c='red', s=50)
+        ax.scatter(x, y, z, c='blue', s=50)
 
     plt.show()
 
