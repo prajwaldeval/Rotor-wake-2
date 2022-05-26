@@ -26,7 +26,7 @@ def aero_coeffs(alpha, filename='polar DU95W180.xlsx'):
     data = np.array(pd.read_excel(filename))[3:, :]
     data = np.array(data, dtype='float64')
     if alpha > 30.06 or alpha < -16.0:
-        print("AoA out of bounds")
+        print("AoA out of bounds", alpha)
     cl = np.interp(alpha, data[:, 0], data[:, 1])
     cd = np.interp(alpha, data[:, 0], data[:, 2])
     return cl, cd
@@ -73,8 +73,8 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
                  "chord": geodef[0],
                  "normal": [np.cos(angle), 0, -1 * np.sin(angle)],
                  "tangential": [-1 * np.sin(angle), 0, -1 * np.cos(angle)],
-                 "angle": 0
-                 }
+                 "angle": 0,
+                 "radius": r_array[ri]}
 
         controlpoints.append(temp1)
 
@@ -222,9 +222,9 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
                                         2] * np.sin(theta),
                                     controlpoints[i]["tangential"][1] * np.sin(theta) + controlpoints[i]["tangential"][
                                         2] * np.cos(theta)],
-                     "angle": theta
+                     "angle": theta,
 
-                     }
+                     "radius": controlpoints[i]["radius"]}
 
             cps_new_blades.append(temp1)
 
@@ -388,13 +388,14 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
 
         for i_cp in range(len(cps)):
             # position and geometry at current control point
-            radius = np.sqrt(cps[i_cp]["coordinates"][1] ** 2 + cps[i_cp]["coordinates"][2] ** 2)
+            # radius = np.sqrt(cps[i_cp]["coordinates"][1] ** 2 + cps[i_cp]["coordinates"][2] ** 2)
+            radius = cps[i_cp]['radius']
             geodef = blade_geometry(radius / R)
             c = geodef[0]
             twist_and_pitch = geodef[1]
 
             # velocities at current control point
-            omega = tsr * U0 * 1 / radius
+            omega = tsr * U0 * 1 / radius #shuold be R?
 
             Vrot = np.cross([-omega, 0, 0], cps[i_cp]["coordinates"])
 
@@ -455,9 +456,9 @@ def create_second_rotor_wake(cps, fils, y_offset, phase_difference):
                                             2] * np.sin(theta),
                                         cps_second[i]["tangential"][1] * np.sin(theta) + cps_second[i]["tangential"][
                                             2] * np.cos(theta)],
-                         "angle": theta
+                         "angle": theta,
 
-                         }
+                         "radius": cps_second[i]["radius"]}
 
         # translation in y-direction with the offset value
         cps_second[i]["coordinates"][1] = cps_second[i]["coordinates"][1] + y_offset
@@ -476,6 +477,15 @@ def create_second_rotor_wake(cps, fils, y_offset, phase_difference):
 
     return cps_second, fils_second
 
+def coefficients(Fax, Faz, r, dr, nb, rho, U0, TSR):
+    CT = 0
+    CP = 0
+    R = r[-1] + 0.5 * dr[-1]
+    omega = TSR * U0 / R
+    for i in range(len(r) - 1):
+        CT = + (dr[i] * Fax[i] * nb) / (0.5 * rho * U0 ** 2 * np.pi * R)
+        CP = + (dr[i] * Faz[i] * nb * r[i] * omega) / (0.5 * rho * U0 ** 3 * np.pi * R)
+    return CT, CP
 
 if __name__ == '__main__':
     number_of_blades = 3
@@ -499,32 +509,32 @@ if __name__ == '__main__':
     cps, fils = wake_system_generation(r, dr, U0, a, wakelength, number_of_blades, tip_speed_ratio)
 
     # 2nd rotor generation
-    y_offset = 2 * (2 * R)  # [m]
-    phase_difference = 60  # [deg]
+    y_offset = 2*(2 * R)  # [m]
+    phase_difference = 180  # [deg]
     cps_second, fils_second = create_second_rotor_wake(cps, fils, y_offset, phase_difference)
 
-    # Plotting of wake system
-    fig = plt.figure()
-    ax = plt.axes(projection="3d")
-    for i in range(len(fils["x1"])):
-        x, y, z = [fils["x1"][i], fils["x2"][i]], [fils["y1"][i], fils["y2"][i]], [fils["z1"][i], fils["z2"][i]]
-        ax.plot(x, y, z, color='black')
-
-    for i in range(len(fils_second["x1"])):
-        x, y, z = [fils_second["x1"][i], fils_second["x2"][i]], \
-                  [fils_second["y1"][i], fils_second["y2"][i]], \
-                  [fils_second["z1"][i], fils_second["z2"][i]]
-        ax.plot(x, y, z, color='black')
-
-    for i in range(len(cps_second)):
-        x, y, z = cps_second[i]["coordinates"]
-        ax.scatter(x, y, z, c='red', s=50)
-
-    for i in range(len(cps)):
-        x, y, z = cps[i]["coordinates"]
-        ax.scatter(x, y, z, c='blue', s=50)
-
-    plt.show()
+    # # Plotting of wake system
+    # fig = plt.figure()
+    # ax = plt.axes(projection="3d")
+    # for i in range(len(fils["x1"])):
+    #     x, y, z = [fils["x1"][i], fils["x2"][i]], [fils["y1"][i], fils["y2"][i]], [fils["z1"][i], fils["z2"][i]]
+    #     ax.plot(x, y, z, color='black')
+    #
+    # for i in range(len(fils_second["x1"])):
+    #     x, y, z = [fils_second["x1"][i], fils_second["x2"][i]], \
+    #               [fils_second["y1"][i], fils_second["y2"][i]], \
+    #               [fils_second["z1"][i], fils_second["z2"][i]]
+    #     ax.plot(x, y, z, color='black')
+    #
+    # for i in range(len(cps_second)):
+    #     x, y, z = cps_second[i]["coordinates"]
+    #     ax.scatter(x, y, z, c='red', s=50)
+    #
+    # for i in range(len(cps)):
+    #     x, y, z = cps[i]["coordinates"]
+    #     ax.scatter(x, y, z, c='blue', s=50)
+    #
+    # plt.show()
 
     # Ua, Va, Wa = unit_strength_induction_matrix(cps, fils, nr_blade_elements, number_of_blades)
     #
