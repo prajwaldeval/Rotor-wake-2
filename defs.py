@@ -74,7 +74,8 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
                  "normal": [np.cos(angle), 0, -1 * np.sin(angle)],
                  "tangential": [-1 * np.sin(angle), 0, -1 * np.cos(angle)],
                  "angle": 0,
-                 "radius": r_array[ri]}
+                 "radius": r_array[ri],
+                 "y_offset": 0}
 
         controlpoints.append(temp1)
 
@@ -224,7 +225,9 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
                                         2] * np.cos(theta)],
                      "angle": theta,
 
-                     "radius": controlpoints[i]["radius"]}
+                     "radius": controlpoints[i]["radius"],
+
+                     "y_offset": 0}
 
             cps_new_blades.append(temp1)
 
@@ -390,20 +393,25 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
             # position and geometry at current control point
             # radius = np.sqrt(cps[i_cp]["coordinates"][1] ** 2 + cps[i_cp]["coordinates"][2] ** 2)
             radius = cps[i_cp]['radius']
+            yoffset = cps[i_cp]['y_offset']
             geodef = blade_geometry(radius / R)
             c = geodef[0]
             twist_and_pitch = geodef[1]
+            #
+            # print("y_offset", yoffset)
 
             # velocities at current control point
-            omega = tsr * U0 * 1 / radius #shuold be R?
+            omega = tsr * U0 * 1 / R  # should b R?
 
-            Vrot = np.cross([-omega, 0, 0], cps[i_cp]["coordinates"])
+            coord_vect = [cps[i_cp]["coordinates"][0], cps[i_cp]["coordinates"][1] - yoffset, cps[i_cp]["coordinates"][2]]
+
+            Vrot = np.cross([-omega, 0, 0], coord_vect)
 
             # axial and tangential
             vel_perceived = [U0 + u_ind[i_cp] + Vrot[0], v_ind[i_cp] + Vrot[1], w_ind[i_cp] + Vrot[2]]
             Vax = vel_perceived[0]
 
-            azimdir = np.cross([-1 / radius, 0, 0], cps[i_cp]["coordinates"])
+            azimdir = np.cross([-1 / radius, 0, 0], coord_vect)
             Vtan = np.dot(azimdir, vel_perceived)
 
             # angle = cps[i_cp]["angle"]
@@ -411,7 +419,8 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
 
             # send to BEM model function
             # print("beta is ", twist_and_pitch, "deg")
-            Fax_ll[i_cp], Faz_ll[i_cp], gamma_new, phi, alpha, cl, cd = BE_loads(Vax, Vtan, twist_and_pitch, c, rho)
+            # print("axial velocity", Vax, "Vtan", Vtan)
+            Fax_ll[i_cp], Faz_ll[i_cp], gamma_new[i_cp], phi, alpha, cl, cd = BE_loads(Vax, Vtan, twist_and_pitch, c, rho)
 
             # update axial induction factor
             a_new[i_cp] = 1 - Vax / U0
@@ -458,7 +467,9 @@ def create_second_rotor_wake(cps, fils, y_offset, phase_difference):
                                             2] * np.cos(theta)],
                          "angle": theta,
 
-                         "radius": cps_second[i]["radius"]}
+                         "radius": cps_second[i]["radius"],
+
+                         "y_offset": y_offset}
 
         # translation in y-direction with the offset value
         cps_second[i]["coordinates"][1] = cps_second[i]["coordinates"][1] + y_offset
@@ -508,33 +519,34 @@ if __name__ == '__main__':
 
     cps, fils = wake_system_generation(r, dr, U0, a, wakelength, number_of_blades, tip_speed_ratio)
 
+
     # 2nd rotor generation
-    y_offset = 2*(2 * R)  # [m]
-    phase_difference = 180  # [deg]
+    y_offset = 1 * (2 * R)  # [m]
+    phase_difference = 90  # [deg]
     cps_second, fils_second = create_second_rotor_wake(cps, fils, y_offset, phase_difference)
 
-    # # Plotting of wake system
-    # fig = plt.figure()
-    # ax = plt.axes(projection="3d")
-    # for i in range(len(fils["x1"])):
-    #     x, y, z = [fils["x1"][i], fils["x2"][i]], [fils["y1"][i], fils["y2"][i]], [fils["z1"][i], fils["z2"][i]]
-    #     ax.plot(x, y, z, color='black')
-    #
-    # for i in range(len(fils_second["x1"])):
-    #     x, y, z = [fils_second["x1"][i], fils_second["x2"][i]], \
-    #               [fils_second["y1"][i], fils_second["y2"][i]], \
-    #               [fils_second["z1"][i], fils_second["z2"][i]]
-    #     ax.plot(x, y, z, color='black')
-    #
-    # for i in range(len(cps_second)):
-    #     x, y, z = cps_second[i]["coordinates"]
-    #     ax.scatter(x, y, z, c='red', s=50)
-    #
-    # for i in range(len(cps)):
-    #     x, y, z = cps[i]["coordinates"]
-    #     ax.scatter(x, y, z, c='blue', s=50)
-    #
-    # plt.show()
+    # Plotting of wake system
+    fig = plt.figure()
+    ax = plt.axes(projection="3d")
+    for i in range(len(fils["x1"])):
+        x, y, z = [fils["x1"][i], fils["x2"][i]], [fils["y1"][i], fils["y2"][i]], [fils["z1"][i], fils["z2"][i]]
+        ax.plot(x, y, z, color='black')
+
+    for i in range(len(fils_second["x1"])):
+        x, y, z = [fils_second["x1"][i], fils_second["x2"][i]], \
+                  [fils_second["y1"][i], fils_second["y2"][i]], \
+                  [fils_second["z1"][i], fils_second["z2"][i]]
+        ax.plot(x, y, z, color='black')
+
+    for i in range(len(cps_second)):
+        x, y, z = cps_second[i]["coordinates"]
+        ax.scatter(x, y, z, c='red', s=50)
+
+    for i in range(len(cps)):
+        x, y, z = cps[i]["coordinates"]
+        ax.scatter(x, y, z, c='blue', s=50)
+
+    plt.show()
 
     # Ua, Va, Wa = unit_strength_induction_matrix(cps, fils, nr_blade_elements, number_of_blades)
     #
