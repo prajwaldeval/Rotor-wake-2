@@ -375,13 +375,14 @@ def BE_loads(Vax, Vtan, beta, c, rho):
     return Fax, Faz, gamma, phi, alpha, cl, cd
 
 
-def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_limit, R, U0):
+def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_limit, R, U0, rho):
     gamma = np.ones(len(cps))
     gamma_new = np.ones(len(cps))
     a_new = np.empty(len(cps))
     Fax_ll = np.empty(len(cps))
     Faz_ll = np.empty(len(cps))
-
+    alpha = np.empty(len(cps))
+    phi = np.empty(len(cps))
     for i in range(iterations):
 
         u_ind = Ua.dot(gamma)
@@ -421,7 +422,7 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
             # send to BEM model function
             # print("beta is ", twist_and_pitch, "deg")
             # print("axial velocity", Vax, "Vtan", Vtan)
-            Fax_ll[i_cp], Faz_ll[i_cp], gamma_new[i_cp], phi, alpha, cl, cd = BE_loads(Vax, Vtan, twist_and_pitch, c, rho)
+            Fax_ll[i_cp], Faz_ll[i_cp], gamma_new[i_cp], phi[i_cp], alpha[i_cp], cl, cd = BE_loads(Vax, Vtan, twist_and_pitch, c, rho)
 
             # update axial induction factor
             a_new[i_cp] = 1 - Vax / U0
@@ -440,7 +441,7 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
             print("convergence threshold met at iteration", i)
             break
 
-    return a_new, gamma, Fax_ll, Faz_ll
+    return a_new, gamma, Fax_ll, Faz_ll, alpha, phi
 
 
 def create_second_rotor_wake(cps, fils, y_offset, phase_difference):
@@ -584,9 +585,9 @@ if __name__ == '__main__':
 
         Ua, Va, Wa = unit_strength_induction_matrix(cps, fils, nr_blade_elements, number_of_blades)
 
-        a_new, gamma, Fax_ll, Faz_ll = iteration(iterations, Ua, Va, Wa,
+        a_new, gamma, Fax_ll, Faz_ll, alpha_ll, phi_ll = iteration(iterations, Ua, Va, Wa,
                                                  cps, tip_speed_ratio,
-                                                 gamma_convergence_weight, error_limit, R, U0)
+                                                 gamma_convergence_weight, error_limit, R, U0, rho)
 
         CT, CP = coefficients(Fax_ll, Faz_ll, r, dr, number_of_blades, rho, U0, tip_speed_ratio)
 
@@ -612,12 +613,3 @@ if __name__ == '__main__':
         plt.plot(r_flip[0:(nr_blade_elements - 1)], Faz_ll[0:(nr_blade_elements - 1)]/norm)
         plt.title("Azimuthal Normalised Force 'F_az'")
         plt.show()
-
-
-
-
-
-
-
-
-

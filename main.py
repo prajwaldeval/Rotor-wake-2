@@ -13,7 +13,7 @@ rho = 1.225
 U0 = 10
 
 # values
-number_elements = 5
+number_elements = 25
 wake_length = 2.5
 dtheta = np.pi / 30
 iterations = 200
@@ -28,9 +28,9 @@ cps, fils = ll.wake_system_generation(r, dr, U0, a, wake_length, number_of_blade
 print('wake generated')
 Ua, Va, Wa = ll.unit_strength_induction_matrix(cps, fils, number_elements, number_of_blades)
 print('induction matrices created')
-a_new, gamma, Fax_ll, Faz_ll = ll.iteration(iterations, Ua, Va, Wa,
+a_new, gamma, Fax_ll, Faz_ll, phi_ll, alpha_ll = ll.iteration(iterations, Ua, Va, Wa,
                                             cps, tip_speed_ratio,
-                                            gamma_convergence_weight, error_limit, R)
+                                            gamma_convergence_weight, error_limit, R, U0, rho)
 print('converged LL')
 CT_ll, CP_ll = ll.coefficients(Fax_ll, Faz_ll, r, dr, number_of_blades, rho, U0, tip_speed_ratio)
 ## BEM Solution
@@ -62,3 +62,7 @@ for i in range(len(r)):
     CP_b += dr[i] * Faz_b[i] * r[i] * omega * number_of_blades / (0.5 * rho * U0 ** 3 * np.pi * R ** 2)
     print(r[i], 'Converged BEM')
 
+##plotting
+
+
+#alpha
