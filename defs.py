@@ -51,10 +51,10 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
     Ur = U0 * (1 - a)  # axial velocity just after rotor
     UD = U0 * (1 - 2 * a)  # axial velocity 'infinity' downwind of rotor
 
-    U_wake = np.linspace(Ur, UD, nt)  # axial velocity at every discretised location in the wake
-    # U_wake = Ur  # at least initially, as indicated by the tutorial
+
 
     D = (r_array[-1] + 0.5 * dr[-1]) * 2  # rotor diameter
+    R = D/2
     # z_wake = np.linspace(0, wakelength * D, nt)  # z(axial) coordinate of wake discretised points
     # t_wake = np.zeros(nt)
 
@@ -375,7 +375,7 @@ def BE_loads(Vax, Vtan, beta, c, rho):
     return Fax, Faz, gamma, phi, alpha, cl, cd
 
 
-def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_limit, R):
+def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_limit, R, U0):
     gamma = np.ones(len(cps))
     gamma_new = np.ones(len(cps))
     a_new = np.empty(len(cps))
@@ -586,7 +586,7 @@ if __name__ == '__main__':
 
         a_new, gamma, Fax_ll, Faz_ll = iteration(iterations, Ua, Va, Wa,
                                                  cps, tip_speed_ratio,
-                                                 gamma_convergence_weight, error_limit, R)
+                                                 gamma_convergence_weight, error_limit, R, U0)
 
         CT, CP = coefficients(Fax_ll, Faz_ll, r, dr, number_of_blades, rho, U0, tip_speed_ratio)
 

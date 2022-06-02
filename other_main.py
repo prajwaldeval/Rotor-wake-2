@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from old_defs import *
+from bem_defs import *
 
 # applied B.C.
 B = 3  # number of blades

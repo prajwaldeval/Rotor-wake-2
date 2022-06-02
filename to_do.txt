@@ -12,4 +12,3 @@ Plots for sensitivity
 3. nr of blade elements
 4. dtheta increments
 5. wakelength (also how many iterations it takes)
-
