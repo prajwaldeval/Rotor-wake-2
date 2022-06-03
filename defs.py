@@ -39,7 +39,7 @@ def blade_geometry(r_R):
     # twistdist = [-12, -8, -5, -4, 0.]
     pitch = 2
     chord = 3 * (1 - r_R) + 1
-    twist = -14 * (1 - r_R)
+    twist = 14 * (1 - r_R)
     result = [chord, twist + pitch]
     return result
 
@@ -403,7 +403,7 @@ def iteration(iterations, Ua, Va, Wa, cps, tsr, gamma_convergence_weight, error_
             # print("y_offset", yoffset)
 
             # velocities at current control point
-            omega = tsr * U0 * 1 / R  # should b R?
+            omega = tsr * U0 * 1 / R
 
             coord_vect = [cps[i_cp]["coordinates"][0], cps[i_cp]["coordinates"][1] - yoffset, cps[i_cp]["coordinates"][2]]
 
@@ -575,7 +575,7 @@ if __name__ == '__main__':
     wake_lst = []
     elem_lst = []
 
-    for tip_speed_ratio in range(6, 12, 2):
+    for tip_speed_ratio in range(6, 10, 2):
 
         t1_start = process_time()
 
@@ -596,7 +596,7 @@ if __name__ == '__main__':
         print("Elapsed time for wakelength of", wake_length, "blade sections", nr_blade_elements, "was",
               t1_stop - t1_start)
 
-        r_flip = np.flip(r/R)
+        r_flip = r/R
         norm = 0.5 * rho * U0 ** 2 * R
 
         fig1 = plt.figure()
