@@ -51,12 +51,8 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
     Ur = U0 * (1 - a)  # axial velocity just after rotor
     UD = U0 * (1 - 2 * a)  # axial velocity 'infinity' downwind of rotor
 
-
-
     D = (r_array[-1] + 0.5 * dr[-1]) * 2  # rotor diameter
     R = D/2
-    # z_wake = np.linspace(0, wakelength * D, nt)  # z(axial) coordinate of wake discretised points
-    # t_wake = np.zeros(nt)
 
     n_rotations = (tip_speed_ratio * wakelength) / ((1 - a) * np.pi)
     theta_array = np.arange(0, n_rotations * 2 * np.pi, increment)
@@ -98,7 +94,6 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
         geodef = blade_geometry(r_array[ri] / R)
         angle = geodef[1] * np.pi / 180
 
-        # my variant
         temp1 = {"x1": geodef[0] * np.sin(-angle),
                  "y1": (r_array[ri] - 0.5 * dr[ri]) * cos_rotation,
                  "z1": (r_array[ri] - 0.5 * dr[ri]) * sin_rotation,
@@ -108,17 +103,6 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
                  "Gamma": 0,
                  "Blade": 0,
                  "Horse": ri}
-
-        # # Ferreira's variant
-        # temp1 = {"x1": geodef[0] * np.sin(-angle),
-        #          "y1": (r_array[ri] - 0.5 * dr[ri]),
-        #          "z1": -1 * geodef[0] * np.cos(angle),
-        #          "x2": 0,
-        #          "y2": (r_array[ri] - 0.5 * dr[ri]),
-        #          "z2": 0,
-        #          "Gamma": 0,
-        #          "Blade": 0,
-        #          "Horse": ri}
 
         filaments.append(temp1)
 
@@ -147,7 +131,6 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
         geodef = blade_geometry(r_array[ri] / R)
         angle = geodef[1] * np.pi / 180
 
-        # my variant
         temp2 = {"x1": geodef[0] * np.sin(angle),
                  "y1": (r_array[ri] + 0.5 * dr[ri]) * cos_rotation,
                  "z1": (r_array[ri] + 0.5 * dr[ri]) * sin_rotation,
@@ -157,18 +140,6 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
                  "Gamma": 0,
                  "Blade": 0,
                  "Horse": ri}
-
-        # # Ferreira's variant
-        # temp2 = {"x1": 0,
-        #          "y1": (r_array[ri + 1] - 0.5 * dr[ri + 1]),
-        #          "z1": 0,
-        #          "x2": geodef[0] * np.sin(-angle),
-        #          "y2": (r_array[ri + 1] - 0.5 * dr[ri + 1]),
-        #          "z2": -1 * geodef[0] * np.cos(angle),
-        #          "Gamma": 0,
-        #          "Blade": 0,
-        #          "Horse": ri
-        #          }
 
         filaments.append(temp2)
 
@@ -521,17 +492,65 @@ if __name__ == '__main__':
     nr_blade_elements = 25
     rho = 1.225
     tip_speed_ratio = 8
-    # Constant or cosine element spacing on the blade
-
-    # r, dr = geometry_cosine(r_hub, R, nr_blade_elements)
     iterations = 200
     gamma_convergence_weight = 0.3
     error_limit = 0.001
-
-    wake_length = 2.5 # how many diameters long the wake shall be prescribed for
+    wake_length = 2.5  # how many diameters long the wake shall be prescribed for
     nt = 50
     increment = np.pi / 30
 
+    # Constant or cosine element spacing on the blade
+    r, dr = geometry_constant(r_hub, R, nr_blade_elements)
+    # r, dr = geometry_cosine(r_hub, R, nr_blade_elements)
+
+    cps, fils = wake_system_generation(r, dr, U0, a, wake_length, number_of_blades, tip_speed_ratio, increment)
+
+    Ua, Va, Wa = unit_strength_induction_matrix(cps, fils, nr_blade_elements, number_of_blades)
+
+    a_new_single, gamma_single, Fax_ll_single, Faz_ll_single, alpha_ll_single, phi_ll_single = iteration(iterations, Ua,
+                                                                                                         Va, Wa,
+                                                                                                         cps,
+                                                                                                         tip_speed_ratio,
+                                                                                                         gamma_convergence_weight,
+                                                                                                         error_limit, R,
+                                                                                                         U0, rho)
+
+    CT_single, CP_single = coefficients(Fax_ll_single, Faz_ll_single, r, dr, number_of_blades, rho, U0, tip_speed_ratio)
+    Cax_ll_single = Fax_ll_single * number_of_blades / (0.5 * rho * U0 ** 2 * R)
+    Caz_ll_single = Faz_ll_single * number_of_blades / (0.5 * rho * U0 ** 2 * R)
+
+    # 2nd rotor generation
+    offset = 1
+    y_offset = offset * 2 * R
+    phase_diff = 60
+
+    cps_second, fils_second = create_second_rotor_wake(cps, fils, y_offset, phase_diff)
+
+    U00, V00, W00 = unit_strength_induction_matrix(cps, fils, nr_blade_elements, number_of_blades)
+    U01, V01, W01 = unit_strength_induction_matrix(cps, fils_second, nr_blade_elements, number_of_blades)
+    U10, V10, W10 = unit_strength_induction_matrix(cps_second, fils, nr_blade_elements, number_of_blades)
+    U11, V11, W11 = unit_strength_induction_matrix(cps_second, fils_second, nr_blade_elements, number_of_blades)
+    Ua = np.block([
+        [U00, U01],
+        [U10, U11]
+    ])
+
+    Va = np.block([
+        [V00, V01],
+        [V10, V11]
+    ])
+
+    Wa = np.block([
+        [W00, W01],
+        [W10, W11]
+    ])
+
+    cp_total = cps + cps_second
+    a_new, gamma, Fax_ll, Faz_ll, alpha_ll, phi_ll = iteration(iterations, Ua, Va, Wa, cp_total, tip_speed_ratio,
+                                                               gamma_convergence_weight, error_limit, R, U0, rho)
+    CT, CP = coefficients1(Fax_ll, Faz_ll, R, rho, U0, tip_speed_ratio, cps)
+    Cax_ll = Fax_ll * number_of_blades / (0.5 * rho * U0 ** 2 * R)
+    Caz_ll = Faz_ll * number_of_blades / (0.5 * rho * U0 ** 2 * R)
 
     # # Plotting of wake system
     # fig = plt.figure()
@@ -556,64 +575,26 @@ if __name__ == '__main__':
 
     # plt.show()
 
+    # Plotting of results
+    r_flip = r / R
 
-
-    # # 2nd rotor generation
-    r, dr = geometry_constant(r_hub, R, nr_blade_elements)
-    cps, fils = wake_system_generation(r, dr, U0, a, wake_length, number_of_blades, tip_speed_ratio, increment)
-
-
-
-
-    offsets = [2,5] #[m]
-    phases = np.linspace(0,360,7)
-    CTs = [0.42461869717707174]
-    CPs = [0.33282780535428247]
-    for y_offsets in offsets:
-        y_offset = y_offsets*2*R
-        phase_diff = 0
-        cps_second, fils_second = create_second_rotor_wake(cps, fils, y_offset, phase_diff)
-
-        U00, V00, W00 = unit_strength_induction_matrix(cps, fils, nr_blade_elements, number_of_blades)
-        U01, V01, W01 = unit_strength_induction_matrix(cps, fils_second, nr_blade_elements, number_of_blades)
-        U10, V10, W10 = unit_strength_induction_matrix(cps_second, fils, nr_blade_elements, number_of_blades)
-        U11, V11, W11 = unit_strength_induction_matrix(cps_second, fils_second, nr_blade_elements, number_of_blades)
-        Ua = np.block([
-            [U00, U01],
-            [U10, U11]
-        ])
-
-        Va = np.block([
-            [V00, V01],
-            [V10, V11]
-        ])
-
-        Wa = np.block([
-            [W00, W01],
-            [W10, W11]
-        ])
-
-        cp_total = cps + cps_second
-        a_new, gamma, Fax_ll, Faz_ll, alpha_ll, phi_ll = iteration(iterations, Ua, Va, Wa, cp_total, tip_speed_ratio, gamma_convergence_weight, error_limit, R, U0, rho)
-        CT, CP = coefficients1(Fax_ll, Faz_ll, R, rho, U0, tip_speed_ratio, cps)
-        CTs.append(CT)
-        CPs.append(CP)
-    offsets = [1,2,5]
     fig1 = plt.figure()
-    plt.plot(offsets,CTs, label='Two rotor cases')
-    plt.xlabel(r'offsets in multiple of diameter')
-    plt.ylabel(r'$C_{T}$')
-    plt.axhline(y=0.425,label='Single rotor case')
+    plt.plot(r_flip[:-1], alpha_ll_single, label='single rotor')
+    plt.plot(r_flip[:-1], alpha_ll[0:len(r_flip)-1], label='2 rotors, blade 1')
+    plt.plot(r_flip[:-1], alpha_ll[len(r_flip):2*len(r_flip)-1], label='2 rotors, blade 2')
+    plt.plot(r_flip[:-1], alpha_ll[2*len(r_flip):3*len(r_flip)-1], label='2 rotors, blade 3')
+    plt.xlabel(r'Angle of attack')
+    plt.ylabel(r'r/R')
     plt.legend()
     plt.show()
-
-    fig2 = plt.figure()
-    plt.plot(offsets, CPs, label='Two rotor cases')
-    plt.xlabel(r'offsets in multiple of diameter')
-    plt.ylabel(r'$C_{P}$')
-    plt.axhline(y=0.333,label='Single rotor case')
-    plt.legend()
-    plt.show()
+    #
+    # fig2 = plt.figure()
+    # plt.plot(offsets, CPs, label='Two rotor cases')
+    # plt.xlabel(r'offsets in multiple of diameter')
+    # plt.ylabel(r'$C_{P}$')
+    # plt.axhline(y=0.333,label='Single rotor case')
+    # plt.legend()
+    # plt.show()
 
 
 
