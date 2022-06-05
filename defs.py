@@ -76,6 +76,7 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
                  "tangential": [-1 * np.sin(angle), 0, -1 * np.cos(angle)],
                  "angle": 0,
                  "radius": r_array[ri],
+                 "dr": dr[ri],
                  "y_offset": 0}
 
         controlpoints.append(temp1)
@@ -227,6 +228,8 @@ def wake_system_generation(r_array, dr, U0, a, wakelength, number_of_blades, tip
                      "angle": theta,
 
                      "radius": controlpoints[i]["radius"],
+
+                     "dr": controlpoints[i]["dr"],
 
                      "y_offset": 0}
 
@@ -500,6 +503,15 @@ def coefficients(Fax, Faz, r, dr, nb, rho, U0, TSR):
         CP = CP + (dr[i] * Faz[i] * r[i] * omega * nb) / (0.5 * rho * U0 ** 3 * np.pi * R ** 2)
     return CT, CP
 
+def coefficients1(Fax, Faz, R, rho, U0, TSR, cps):
+    CT = 0
+    CP = 0
+    omega = TSR * U0 / R
+    for i in range(len(cps)):
+        CT = CT + (cps[i]["dr"] * Fax[i]) / (0.5 * rho * U0 ** 2 * np.pi * R **2)
+        CP = CP + (cps[i]["dr"] * Faz[i] * cps[i]["radius"] * omega) / (0.5 * rho * U0 ** 3 * np.pi * R ** 2)
+    return CT, CP
+
 if __name__ == '__main__':
     number_of_blades = 3
     R = 50  # m
@@ -508,6 +520,7 @@ if __name__ == '__main__':
     a = 0.25
     nr_blade_elements = 25
     rho = 1.225
+    tip_speed_ratio = 8
     # Constant or cosine element spacing on the blade
 
     # r, dr = geometry_cosine(r_hub, R, nr_blade_elements)
@@ -515,14 +528,10 @@ if __name__ == '__main__':
     gamma_convergence_weight = 0.3
     error_limit = 0.001
 
-    wake_length = 2.5  # how many diameters long the wake shall be prescribed for
+    wake_length = 2.5 # how many diameters long the wake shall be prescribed for
     nt = 50
     increment = np.pi / 30
 
-    # # 2nd rotor generation
-    # y_offset = 1 * (2 * R)  # [m]
-    # phase_difference = 90  # [deg]
-    # cps_second, fils_second = create_second_rotor_wake(cps, fils, y_offset, phase_difference)
 
     # # Plotting of wake system
     # fig = plt.figure()
@@ -549,67 +558,106 @@ if __name__ == '__main__':
 
 
 
+    # # 2nd rotor generation
+    r, dr = geometry_constant(r_hub, R, nr_blade_elements)
+    cps, fils = wake_system_generation(r, dr, U0, a, wake_length, number_of_blades, tip_speed_ratio, increment)
 
-    # U00, V00, W00 = unit_strength_induction_matrix(cps, fils, nr_blade_elements, number_of_blades)
-    # U01, V01, W01 = unit_strength_induction_matrix(cps, fils_second, nr_blade_elements, number_of_blades)
-    # U10, V10, W10 = unit_strength_induction_matrix(cps_second, fils, nr_blade_elements, number_of_blades)
-    # U11, V11, W11 = unit_strength_induction_matrix(cps_second, fils_second, nr_blade_elements, number_of_blades)
-    # Ua = np.block([
-    #     [U00, U01],
-    #     [U10, U11]
-    # ])
+
+
+
+    offsets = [2,5] #[m]
+    phases = np.linspace(0,360,7)
+    CTs = [0.42461869717707174]
+    CPs = [0.33282780535428247]
+    for y_offsets in offsets:
+        y_offset = y_offsets*2*R
+        phase_diff = 0
+        cps_second, fils_second = create_second_rotor_wake(cps, fils, y_offset, phase_diff)
+
+        U00, V00, W00 = unit_strength_induction_matrix(cps, fils, nr_blade_elements, number_of_blades)
+        U01, V01, W01 = unit_strength_induction_matrix(cps, fils_second, nr_blade_elements, number_of_blades)
+        U10, V10, W10 = unit_strength_induction_matrix(cps_second, fils, nr_blade_elements, number_of_blades)
+        U11, V11, W11 = unit_strength_induction_matrix(cps_second, fils_second, nr_blade_elements, number_of_blades)
+        Ua = np.block([
+            [U00, U01],
+            [U10, U11]
+        ])
+
+        Va = np.block([
+            [V00, V01],
+            [V10, V11]
+        ])
+
+        Wa = np.block([
+            [W00, W01],
+            [W10, W11]
+        ])
+
+        cp_total = cps + cps_second
+        a_new, gamma, Fax_ll, Faz_ll, alpha_ll, phi_ll = iteration(iterations, Ua, Va, Wa, cp_total, tip_speed_ratio, gamma_convergence_weight, error_limit, R, U0, rho)
+        CT, CP = coefficients1(Fax_ll, Faz_ll, R, rho, U0, tip_speed_ratio, cps)
+        CTs.append(CT)
+        CPs.append(CP)
+    offsets = [1,2,5]
+    fig1 = plt.figure()
+    plt.plot(offsets,CTs, label='Two rotor cases')
+    plt.xlabel(r'offsets in multiple of diameter')
+    plt.ylabel(r'$C_{T}$')
+    plt.axhline(y=0.425,label='Single rotor case')
+    plt.legend()
+    plt.show()
+
+    fig2 = plt.figure()
+    plt.plot(offsets, CPs, label='Two rotor cases')
+    plt.xlabel(r'offsets in multiple of diameter')
+    plt.ylabel(r'$C_{P}$')
+    plt.axhline(y=0.333,label='Single rotor case')
+    plt.legend()
+    plt.show()
+
+
+
+
+
+    # time_lst = []
+    # wake_lst = []
+    # elem_lst = []
     #
-    # Va = np.block([
-    #     [V00, V01],
-    #     [V10, V11]
-    # ])
+    # for tip_speed_ratio in range(6, 10, 2):
     #
-    # Wa = np.block([
-    #     [W00, W01],
-    #     [W10, W11]
-    # ])
+    #     t1_start = process_time()
     #
-    # cp_total = cps + cps_second
-
-    time_lst = []
-    wake_lst = []
-    elem_lst = []
-
-    for tip_speed_ratio in range(6, 10, 2):
-
-        t1_start = process_time()
-
-        r, dr = geometry_constant(r_hub, R, nr_blade_elements)
-
-        cps, fils = wake_system_generation(r, dr, U0, a, wake_length, number_of_blades, tip_speed_ratio, increment)
-
-        Ua, Va, Wa = unit_strength_induction_matrix(cps, fils, nr_blade_elements, number_of_blades)
-
-        a_new, gamma, Fax_ll, Faz_ll, alpha_ll, phi_ll = iteration(iterations, Ua, Va, Wa,
-                                                 cps, tip_speed_ratio,
-                                                 gamma_convergence_weight, error_limit, R, U0, rho)
-
-        CT, CP = coefficients(Fax_ll, Faz_ll, r, dr, number_of_blades, rho, U0, tip_speed_ratio)
-
-        t1_stop = process_time()
-
-        print("Elapsed time for wakelength of", wake_length, "blade sections", nr_blade_elements, "was",
-              t1_stop - t1_start)
-
-        r_flip = r/R
-        norm = 0.5 * rho * U0 ** 2 * R
-
-        fig1 = plt.figure()
-        plt.plot(r_flip[0:(nr_blade_elements - 1)], a_new[0:(nr_blade_elements - 1)])
-        plt.title("Axial Induction Factor 'a'")
-        plt.show()
-
-        fig2 = plt.figure()
-        plt.plot(r_flip[0:(nr_blade_elements - 1)], Fax_ll[0:(nr_blade_elements - 1)]/norm)
-        plt.title("Axial Normalised Force 'F_ax'")
-        plt.show()
-
-        fig3 = plt.figure()
-        plt.plot(r_flip[0:(nr_blade_elements - 1)], Faz_ll[0:(nr_blade_elements - 1)]/norm)
-        plt.title("Azimuthal Normalised Force 'F_az'")
-        plt.show()
+    #     r, dr = geometry_constant(r_hub, R, nr_blade_elements)
+    #
+    #     cps, fils = wake_system_generation(r, dr, U0, a, wake_length, number_of_blades, tip_speed_ratio, increment)
+    #
+    #     Ua, Va, Wa = unit_strength_induction_matrix(cps, fils, nr_blade_elements, number_of_blades)
+    #
+    #     a_new, gamma, Fax_ll, Faz_ll, alpha_ll, phi_ll = iteration(iterations, Ua, Va, Wa,
+    #                                              cps, tip_speed_ratio,
+    #                                              gamma_convergence_weight, error_limit, R, U0, rho)
+    #
+    #     CT, CP = coefficients(Fax_ll, Faz_ll, r, dr, number_of_blades, rho, U0, tip_speed_ratio)
+    #
+    #     t1_stop = process_time()
+    #
+    #     print("Elapsed time for wakelength of", wake_length, "blade sections", nr_blade_elements, "was",
+    #           t1_stop - t1_start)
+    #
+    #     r_flip = r/R
+    #     norm = 0.5 * rho * U0 ** 2 * R
+    #
+    #     fig1 = plt.figure()
+    #     plt.plot(r_flip[0:(nr_blade_elements - 1)], a_new[0:(nr_blade_elements - 1)])
+    #     plt.title("Axial Induction Factor 'a'")
+    #     plt.show()
+    #
+    #     fig2 = plt.figure()
+    #     plt.plot(r_flip[0:(nr_blade_elements - 1)], Fax_ll[0:(nr_blade_elements - 1)]/norm)
+    #     plt.title("Axial Normalised Force 'F_ax'")
+    #     plt.show()
+    #
+    #     fig3 = plt.figure()
+    #     plt.plot(r_flip[0:(nr_blade_elements - 1)], Faz_ll[0:(nr_blade_elements - 1)]/norm)
+    #     plt.title("Azimuthal Normalised Force 'F_az'")
+    #     plt.show()
